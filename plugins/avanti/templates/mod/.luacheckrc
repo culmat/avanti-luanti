@@ -16,9 +16,8 @@ read_globals = {
 	table = { fields = { "copy", "copy_with_metatables", "indexof", "keyof", "insert_all", "key_value_swap", "shuffle" } },
 	math = { fields = { "hypot", "sign", "factorial", "round", "isfinite" } },
 
-	-- Globals of declared dependencies. Regenerate with: ldg globals .
-}
+	-- Optional dependencies (init.lua checks mtt.enabled before loading the tests)
+	"mtt",
 
-files["test/"] = {
-	read_globals = { "mtt" },
+	-- Globals of other declared dependencies. List them with: ldg globals .
 }
