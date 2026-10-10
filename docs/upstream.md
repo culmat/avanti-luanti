@@ -11,6 +11,7 @@ Things avanti-luanti found or needs that belong upstream, not in a fork. Per [ai
 | 💡 | Per-mod dependencies inside modpacks (#560) | Removes false cycles and makes game support more accurate; luanti-depgraph already computes this from sources |
 | 💡 | Make the `game=` package filter follow aliases | `game=Minetest/minetest_game` returns 0 mods today |
 | 💡 | Expose game-support detection errors and confidence via the API | Lets authors and tools see why support was or wasn't detected |
+| 📝 | Stored game support goes stale when a *game's* provides change. Examples: doorbell still lists codecube, which no longer provides `default`; adventurelands, lean_core and gaifa_al_cubo now provide `default` but aren't listed for mods that depend on it. On 2026-10-10, 40 of 60 sampled mods were affected (`scripts/crosscheck_game_support.py` in luanti-depgraph). A periodic full recompute, or recomputing dependents when a game's provides change, would fix it (related: #573). | Correct "works with" lists on every package page |
 | 💡 | Optionally snapshot dependencies per release | Enables "since which release did X depend on Y" |
 
 ## Tooling
