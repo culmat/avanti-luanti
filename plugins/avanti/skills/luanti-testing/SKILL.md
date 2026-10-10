@@ -26,7 +26,8 @@ avanti test --keep                # keep the throwaway world and debug.txt even 
 | PASS | Clean |
 | WARN | Errors in the log, but none mention your mod. Usually a game load-order bug. |
 | FAIL | Errors naming your mod, a crash, a timeout, or unresolvable dependencies |
-| SKIP | Game not synced. Run `avanti games sync <id>`. |
+| BROKEN | The game itself failed to start on that engine version (errors only in the game's files). Not counted as a failure; worth reporting to the game. |
+| SKIP | Game not synced (`avanti games sync <id>`), or the engine is older than the game's `min_minetest_version`. |
 
 Logs are in `debug.txt` under the run's temp directory (printed for FAIL and WARN). Use `--fixed-order` to rule out load-order flakiness, and `--json` for machine-readable output.
 

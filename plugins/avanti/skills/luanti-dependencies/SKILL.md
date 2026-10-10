@@ -47,6 +47,8 @@ How to read the results:
 | `ldg lint` LDG002 | Checks for a mod but doesn't list it in `optional_depends`. Load order is not guaranteed. |
 | `ldg lint` LDG003 | Uses another mod's item names undeclared. |
 
+For a visual overview, or a link to share with other modders, use the dependency explorer at https://culmat.github.io/luanti-depgraph/ (graph, per-game coloring, dependency trees, SQL in the browser). Package pages are at `#/p/<author>/<name>`, mod names at `#/m/<name>`.
+
 `ldg info` shows the database age; run `ldg update` if it's more than a week old. Static analysis is heuristic (tree-sitter, conservative). Confirm conclusions with `avanti test`.
 
 ## Making a mod work across games

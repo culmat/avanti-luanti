@@ -1,0 +1,62 @@
+- generic [ref=f1e1]:
+  - banner [ref=f1e2]:
+    - heading [level=1] [ref=f1e3]:
+      - link "Luanti dependency explorer" [ref=f1e4] [cursor=pointer]:
+        - /url: "#/"
+    - searchbox "Search packages or mod names" [ref=f1e6]
+    - generic [ref=f1e7]:
+      - text: Color for game
+      - combobox "Color for game" [ref=f1e8]:
+        - option "— by type —"
+        - option "Minetest Game"
+        - option "Mineclonia" [selected]
+        - option "VoxeLibre (formerly MineClone2)"
+        - option "Backrooms Test"
+        - option "Repixture"
+        - option "Glitch"
+        - option "Extra Ordinance"
+        - option "Asuna"
+        - option "NodeCore"
+        - option "Subway Miner"
+        - option "Alter"
+        - 'option "Skyblock: Zero"'
+    - navigation [ref=f1e9]:
+      - link "SQL" [ref=f1e10] [cursor=pointer]:
+        - /url: "#/sql"
+      - link "About" [ref=f1e11] [cursor=pointer]:
+        - /url: "#/about"
+  - main [ref=f1e12]:
+    - region "Dependency graph" [ref=f1e13]:
+      - generic [ref=f1e15]:
+        - strong [ref=f1e665]: In Mineclonia
+        - generic [ref=f1e666]: mod works
+        - generic [ref=f1e668]: installable, uses undeclared mods
+        - generic [ref=f1e670]: can't be installed
+        - generic [ref=f1e672]: the game
+        - generic [ref=f1e674]: other games / unknown
+      - generic [ref=f1e16]:
+        - generic [ref=f1e17]:
+          - checkbox "optional deps" [ref=f1e18]
+          - text: optional deps
+        - button "Re-layout" [ref=f1e19] [cursor=pointer]
+    - complementary [ref=f1e21]:
+      - heading "Technic" [level=2] [ref=f1e767]
+      - paragraph [ref=f1e768]:
+        - code [ref=f1e769]: RealBadAngel/technic
+        - text: · mod · 168,465 downloads
+      - paragraph [ref=f1e770]: Extensive machinery mod with electricity and ores.
+      - generic [ref=f1e771]:
+        - generic [ref=f1e772]: code LGPL-2.1-only
+        - generic [ref=f1e773]: media LGPL-2.1-only
+        - generic [ref=f1e774]: Luanti ≥ 5.14
+        - generic [ref=f1e775]: maintenance only
+      - paragraph [ref=f1e776]:
+        - link "ContentDB" [ref=f1e777] [cursor=pointer]:
+          - /url: https://content.luanti.org/packages/RealBadAngel/technic/
+        - text: ·
+        - link "source" [ref=f1e778] [cursor=pointer]:
+          - /url: https://github.com/minetest-mods/technic
+      - tablist [ref=f1e779]:
+        - tab "Details" [ref=f1e780] [cursor=pointer]
+        - tab "Dependency tree" [active] [selected] [ref=f1e781] [cursor=pointer]
+      - paragraph [ref=f1e1299]: Hard dependencies, resolved through the best-scored standalone provider; green = provided by Mineclonia.

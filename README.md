@@ -82,7 +82,7 @@ ldg compat . && ldg lint .
 | Agent | `compat-investigator` | Root-causes a failing game and proposes the smallest fix |
 | Hook | PostToolUse | luacheck/stylua after Lua edits, `ldg lint` after `mod.conf` edits (feedback only) |
 | Hook | SessionStart | In Luanti projects: what's available and what's missing |
-| MCP | `luanti-depgraph` | `ldg mcp` (read-only dependency graph tools) |
+| MCP | `luanti-depgraph` | `ldg mcp`: read-only dependency graph tools and `search_code` (Lua-aware code search) |
 | MCP | `zvec-grep` | Local semantic search over `~/.avanti/search`, a text-only mirror of the corpus: engine docs and builtin, games, top packages, modding book |
 
 Install it without `setup.sh`:
@@ -113,7 +113,8 @@ avanti index [PATH]                zvec-grep index
 | PASS | Clean |
 | WARN | Errors that don't mention your mod (usually game load-order bugs) |
 | FAIL | Errors naming your mod, crash, timeout, or unresolvable dependencies |
-| SKIP | Game not synced |
+| BROKEN | The game itself can't start on that engine (not counted as a failure) |
+| SKIP | Game not synced, or engine below the game's minimum |
 
 Mods made with the template get CI from [.github/workflows/mod-ci.yml](.github/workflows/mod-ci.yml): luacheck + `ldg lint`, then games × engines `5.10.0, 5.17.0` in the official server images.
 
@@ -137,12 +138,15 @@ docs/                            primer, ContentDB, AI policy, upstream backlog
 ## Roadmap
 
 - **Iteration 1 (now):** tooling, i.e. setup, plugin, CLI, template, CI, and luanti-depgraph with CLI, MCP and the nightly snapshot.
-- **Iteration 2:** public dependency explorer on GitHub Pages, querying the snapshot in the browser:
-  - sigma.js for the ecosystem overview, Cytoscape.js for per-mod trees, sql.js or DuckDB-WASM for queries;
-  - a Lua-aware semantic index;
-  - dependency history per release;
-  - upstream ContentDB contributions;
-  - the first mods released through the factory.
+- **Iteration 2 (done):**
+  - [dependency explorer](https://culmat.github.io/luanti-depgraph/) on GitHub Pages (sigma.js overview, per-game coloring, Cytoscape dependency trees, SQL in the browser);
+  - Lua-aware code search (`ldg code search`, MCP `search_code`);
+  - dependency and provides history carried across nightly snapshots;
+  - analysis that understands conditionally loaded files;
+  - PyPI release workflow;
+  - upstream findings with patches (`docs/upstream.md`);
+  - the first factory-made mod, [Glowshrooms](https://github.com/culmat/glowshroom).
+- **Next:** more mods, upstream PRs filed by the maintainer, per-release history backfill from git.
 
 ## License
 

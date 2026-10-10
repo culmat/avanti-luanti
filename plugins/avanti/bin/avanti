@@ -97,6 +97,13 @@ cmd_doctor() {
 			row fail "dependency db" "missing: ldg update"
 		fi
 	fi
+	local code_db
+	code_db="$(ldg info --json 2>/dev/null | jq -r '.path // empty' | sed 's/luanti-deps.sqlite$/luanti-code.sqlite/')"
+	if [[ -n "$code_db" && -f "$code_db" ]]; then
+		row ok "code search index" "$code_db"
+	else
+		row warn "code search index" "missing: ldg code update (needs luanti-depgraph[search])"
+	fi
 	if [[ -d "$AVANTI_SEARCH/.zvec-grep" ]]; then
 		row ok "search index" "$AVANTI_SEARCH"
 	else
@@ -318,7 +325,8 @@ Lints PATH (luacheck, stylua, ldg lint), then for every game x engine builds a t
 world with PATH, the dependencies `ldg install` resolves for that game and a smoke-test
 mod (or mtt, if the mod uses it), runs the server headlessly with random_mod_load_order,
 and reports errors from the log. Only errors that mention the mod fail the run; errors from
-the game or other mods are reported as WARN. Games default to supported_games in mod.conf/modpack.conf,
+the game or other mods are reported as WARN, a game that can't start on that engine as BROKEN,
+and engines below the game's min_minetest_version are skipped. Games default to supported_games in mod.conf/modpack.conf,
 else minetest,mineclonia,mineclone2.
 EOF
 }
@@ -386,11 +394,20 @@ run_case() {
 			{game: $game, engine: $engine, runner: $runner, status: $status, reason: $reason,
 			 seconds: $seconds, errors: ($errors | lines), other_errors: ($other | lines),
 			 warnings: ($warnings | lines), log: $log}' >>"$RESULTS"
-		if [[ "$status" =~ ^(PASS|WARN|SKIP)$ && "$keep" -eq 0 ]]; then rm -rf "$run"; fi
+		if [[ "$status" =~ ^(PASS|WARN|SKIP|BROKEN)$ && "$keep" -eq 0 ]]; then rm -rf "$run"; fi
 	}
 
 	if [[ -z "$gdir" ]]; then
 		reason="game not synced (avanti games sync $game)"
+		status="SKIP"
+		record
+		return 0
+	fi
+
+	local game_min
+	game_min="$(awk -F'=' '/^[[:space:]]*min_minetest_version[[:space:]]*=/ { gsub(/[[:space:]]/, "", $2); print $2 }' "$gdir/game.conf" 2>/dev/null)"
+	if [[ -n "$game_min" && "$engine" != master ]] && version_lt "$engine" "$game_min"; then
+		reason="$game folder requires Luanti >= $game_min"
 		status="SKIP"
 		record
 		return 0
@@ -469,6 +486,10 @@ run_case() {
 		grep -cE "$TARGET_PATTERN" || true)"
 	if [[ $code -eq 124 || $code -eq 142 ]]; then
 		reason="timed out after ${limit}s"
+	elif [[ $code -ne 0 && "${ours:-0}" -eq 0 ]] && grep -qE "ERROR\[.*(/games/$folder/|/games/[^/]+/mods/)" "$run/debug.txt" 2>/dev/null; then
+		# The game itself failed (e.g. it doesn't support this engine version): not the mod's fault.
+		status="BROKEN"
+		reason="the game failed to start on $engine (errors only in the game's own files)"
 	elif [[ $code -ne 0 ]]; then
 		reason="server exited with code $code"
 		[[ "${ours:-0}" -eq 0 ]] && reason="$reason; no error names your mod (game load-order issue? retry or use --fixed-order)"
@@ -483,7 +504,7 @@ run_case() {
 }
 
 cmd_test() {
-	local path="." runner="auto" limit=180 keep=0 lint=1 json=0
+	local path="." runner="auto" limit=240 keep=0 lint=1 json=0
 	local games=() engines=()
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
@@ -551,10 +572,10 @@ cmd_test() {
 			while IFS=$'\t' read -r g e r s d; do
 				local color="$C_GREEN"
 				[[ "$s" == FAIL ]] && color="$C_RED"
-				[[ "$s" == SKIP || "$s" == WARN ]] && color="$C_YELLOW"
+				[[ "$s" == SKIP || "$s" == WARN || "$s" == BROKEN ]] && color="$C_YELLOW"
 				printf '%-12s %-9s %-7s %s%-6s%s %s\n' "$g" "$e" "$r" "$color" "$s" "$C_OFF" "$d"
 			done
-		jq -r 'select(.status == "FAIL" or .status == "WARN") | "\n\(.game) \(.engine): \(.log)",
+		jq -r 'select(.status == "FAIL" or .status == "WARN" or .status == "BROKEN") | "\n\(.game) \(.engine): \(.log)",
 			(.errors[] | "  " + .), (.warnings[] | "  warning: " + .),
 			(.other_errors[:5][] | "  other: " + .)' "$RESULTS"
 		[[ $lint_ok -eq 1 ]] || printf '\n%slint failed%s (see above)\n' "$C_RED" "$C_OFF"

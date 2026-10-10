@@ -1,0 +1,158 @@
+- generic [ref=f1e1]:
+  - banner [ref=f1e2]:
+    - heading [level=1] [ref=f1e3]:
+      - link "Luanti dependency explorer" [ref=f1e4] [cursor=pointer]:
+        - /url: "#/"
+    - searchbox "Search packages or mod names" [ref=f1e6]
+    - generic [ref=f1e7]:
+      - text: Color for game
+      - combobox "Color for game" [ref=f1e8]:
+        - option "— by type —" [selected]
+        - option "Minetest Game"
+        - option "Mineclonia"
+        - option "VoxeLibre (formerly MineClone2)"
+        - option "Backrooms Test"
+        - option "Repixture"
+        - option "Glitch"
+        - option "Extra Ordinance"
+        - option "Asuna"
+        - option "NodeCore"
+        - option "Subway Miner"
+        - option "Alter"
+        - 'option "Skyblock: Zero"'
+    - navigation [ref=f1e9]:
+      - link "SQL" [ref=f1e10] [cursor=pointer]:
+        - /url: "#/sql"
+      - link "About" [ref=f1e11] [cursor=pointer]:
+        - /url: "#/about"
+  - main [ref=f1e12]:
+    - region "Dependency graph" [ref=f1e13]:
+      - generic [ref=f1e15]:
+        - generic [ref=f1e29]: mod / modpack
+        - generic [ref=f1e31]: game
+        - generic [ref=f1e33]: API only games provide (e.g. default)
+        - generic [ref=f1e35]: "Size: downloads. Arrow: depends on."
+      - generic [ref=f1e16]:
+        - generic [ref=f1e17]:
+          - checkbox "optional deps" [ref=f1e18]
+          - text: optional deps
+        - button "Re-layout" [ref=f1e19] [cursor=pointer]
+    - complementary [ref=f1e21]:
+      - heading "Who depends on what, in which game?" [level=2] [ref=f1e574]
+      - paragraph [ref=f1e575]: 3,497 ContentDB packages (3184 mods, 181 games, 132 texture packs), sources of 297 packages analyzed. Snapshot built 2026-10-10.
+      - paragraph [ref=f1e576]:
+        - text: In Luanti a dependency names a
+        - emphasis [ref=f1e577]: mod name
+        - text: ", not a package. Many packages can provide the same name, and games bundle mods, so"
+        - code [ref=f1e578]: depends = default
+        - text: works only in games that bundle a
+        - code [ref=f1e579]: default
+        - text: mod. Pick a game above to color every mod by whether it can run there.
+      - heading "Most depended-on mod names that only games provide" [level=3] [ref=f1e580]
+      - table [ref=f1e581]:
+        - rowgroup [ref=f1e582]:
+          - row [ref=f1e583]:
+            - columnheader "mod name" [ref=f1e584]
+            - columnheader "hard dependers" [ref=f1e585]
+            - columnheader "games providing it" [ref=f1e586]
+          - row [ref=f1e587]:
+            - cell [ref=f1e588]:
+              - link [ref=f1e589] [cursor=pointer]:
+                - /url: "#/m/default"
+                - code [ref=f1e590]: default
+            - cell "1016" [ref=f1e591]
+            - cell "37" [ref=f1e592]
+          - row [ref=f1e593]:
+            - cell [ref=f1e594]:
+              - link [ref=f1e595] [cursor=pointer]:
+                - /url: "#/m/dye"
+                - code [ref=f1e596]: dye
+            - cell "89" [ref=f1e597]
+            - cell "30" [ref=f1e598]
+          - row [ref=f1e599]:
+            - cell [ref=f1e600]:
+              - link [ref=f1e601] [cursor=pointer]:
+                - /url: "#/m/mcl_core"
+                - code [ref=f1e602]: mcl_core
+            - cell "81" [ref=f1e603]
+            - cell "3" [ref=f1e604]
+          - row [ref=f1e605]:
+            - cell [ref=f1e606]:
+              - link [ref=f1e607] [cursor=pointer]:
+                - /url: "#/m/nc_api_all"
+                - code [ref=f1e608]: nc_api_all
+            - cell "60" [ref=f1e609]
+            - cell "2" [ref=f1e610]
+          - row [ref=f1e611]:
+            - cell [ref=f1e612]:
+              - link [ref=f1e613] [cursor=pointer]:
+                - /url: "#/m/wool"
+                - code [ref=f1e614]: wool
+            - cell "53" [ref=f1e615]
+            - cell "28" [ref=f1e616]
+          - row [ref=f1e617]:
+            - cell [ref=f1e618]:
+              - link [ref=f1e619] [cursor=pointer]:
+                - /url: "#/m/nc_terrain"
+                - code [ref=f1e620]: nc_terrain
+            - cell "42" [ref=f1e621]
+            - cell "2" [ref=f1e622]
+          - row [ref=f1e623]:
+            - cell [ref=f1e624]:
+              - link [ref=f1e625] [cursor=pointer]:
+                - /url: "#/m/nc_lode"
+                - code [ref=f1e626]: nc_lode
+            - cell "36" [ref=f1e627]
+            - cell "2" [ref=f1e628]
+          - row [ref=f1e629]:
+            - cell [ref=f1e630]:
+              - link [ref=f1e631] [cursor=pointer]:
+                - /url: "#/m/mcl_sounds"
+                - code [ref=f1e632]: mcl_sounds
+            - cell "35" [ref=f1e633]
+            - cell "3" [ref=f1e634]
+          - row [ref=f1e635]:
+            - cell [ref=f1e636]:
+              - link [ref=f1e637] [cursor=pointer]:
+                - /url: "#/m/player_api"
+                - code [ref=f1e638]: player_api
+            - cell "34" [ref=f1e639]
+            - cell "62" [ref=f1e640]
+          - row [ref=f1e641]:
+            - cell [ref=f1e642]:
+              - link [ref=f1e643] [cursor=pointer]:
+                - /url: "#/m/vessels"
+                - code [ref=f1e644]: vessels
+            - cell "33" [ref=f1e645]
+            - cell "24" [ref=f1e646]
+          - row [ref=f1e647]:
+            - cell [ref=f1e648]:
+              - link [ref=f1e649] [cursor=pointer]:
+                - /url: "#/m/flowers"
+                - code [ref=f1e650]: flowers
+            - cell "32" [ref=f1e651]
+            - cell "30" [ref=f1e652]
+          - row [ref=f1e653]:
+            - cell [ref=f1e654]:
+              - link [ref=f1e655] [cursor=pointer]:
+                - /url: "#/m/mcl_init"
+                - code [ref=f1e656]: mcl_init
+            - cell "31" [ref=f1e657]
+            - cell "3" [ref=f1e658]
+      - paragraph [ref=f1e659]:
+        - text: Click a node, search above, or try
+        - link "mt-mods/pipeworks" [ref=f1e660] [cursor=pointer]:
+          - /url: "#/p/mt-mods/pipeworks"
+        - text: ","
+        - link "default" [ref=f1e661] [cursor=pointer]:
+          - /url: "#/m/default"
+        - text: or
+        - link "SQL" [ref=f1e662] [cursor=pointer]:
+          - /url: "#/sql"
+        - text: ". Data:"
+        - link "ContentDB" [ref=f1e663] [cursor=pointer]:
+          - /url: https://content.luanti.org
+        - text: via
+        - link "luanti-depgraph" [ref=f1e664] [cursor=pointer]:
+          - /url: https://github.com/culmat/luanti-depgraph
+        - text: .

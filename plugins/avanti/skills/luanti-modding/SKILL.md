@@ -14,8 +14,9 @@ The Luanti API is large and has changed over the years (`minetest.*` became `cor
    - `$AVANTI_HOME/corpus/engine/doc/lua_api.md` (`AVANTI_HOME` defaults to `~/.avanti`). Grep for the exact name, e.g. `grep -n "get_mod_data_path" ~/.avanti/corpus/engine/doc/lua_api.md`.
    - Settings are in `.../engine/builtin/settingtypes.txt`.
 2. **Real usage in the ecosystem:** the `zvec_grep_search` MCP tool with `root` = the absolute path of `~/.avanti/search` (a text-only mirror of `~/.avanti/corpus`; the same relative paths exist in both). It covers the engine docs and builtin, Minetest Game, Mineclonia, VoxeLibre, the top ContentDB packages, the modding book and mtt. Ask in natural language ("how do mods register a stair node in mineclonia"), then read the hits.
-3. **The Luanti Modding Book:** `~/.avanti/corpus/vendor/modding_book/_en/` for idioms and explanations.
-4. **LuaLS annotations:** `~/.avanti/corpus/vendor/luanti-ide-helper` for signatures and types.
+3. **Lua-aware code search:** the `search_code` MCP tool (luanti-depgraph), or `ldg code search "…" [--kind register|function|table] [--game mineclonia]`. Results come back as whole functions, `register_*` calls and API tables from the top ContentDB packages and games, with package, file and lines. It's the fastest way to see how working mods do something, and `--game` limits results to mods that work in that game.
+4. **The Luanti Modding Book:** `~/.avanti/corpus/vendor/modding_book/_en/` for idioms and explanations.
+5. **LuaLS annotations:** `~/.avanti/corpus/vendor/luanti-ide-helper` for signatures and types.
 
 If a function isn't in `lua_api.md`, it doesn't exist in the engine. It may come from a mod; check which with `ldg` (see the luanti-dependencies skill).
 

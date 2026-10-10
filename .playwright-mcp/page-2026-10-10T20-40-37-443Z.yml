@@ -1,0 +1,771 @@
+- generic [ref=f3e1]:
+  - banner [ref=f3e2]:
+    - heading [level=1] [ref=f3e3]:
+      - link "Luanti dependency explorer" [ref=f3e4] [cursor=pointer]:
+        - /url: "#/"
+    - searchbox "Search packages or mod names" [ref=f3e6]
+    - generic [ref=f3e7]:
+      - text: Color for game
+      - combobox "Color for game" [ref=f3e8]:
+        - option "— by type —"
+        - option "Minetest Game"
+        - option "Mineclonia" [selected]
+        - option "VoxeLibre (formerly MineClone2)"
+        - option "Backrooms Test"
+        - option "Repixture"
+        - option "Glitch"
+        - option "Extra Ordinance"
+        - option "Asuna"
+        - option "NodeCore"
+        - option "Subway Miner"
+        - option "Alter"
+        - 'option "Skyblock: Zero"'
+    - navigation [ref=f3e9]:
+      - link "SQL" [ref=f3e10] [cursor=pointer]:
+        - /url: "#/sql"
+      - link "About" [ref=f3e11] [cursor=pointer]:
+        - /url: "#/about"
+  - main [ref=f3e12]:
+    - region "Dependency graph" [ref=f3e13]:
+      - generic [ref=f3e22]:
+        - strong [ref=f3e23]: In Mineclonia
+        - generic [ref=f3e24]: mod works
+        - generic [ref=f3e26]: installable, uses undeclared mods
+        - generic [ref=f3e28]: can't be installed
+        - generic [ref=f3e30]: the game
+        - generic [ref=f3e32]: other games / unknown
+      - generic [ref=f3e34]:
+        - generic [ref=f3e35]:
+          - checkbox "optional deps" [ref=f3e36]
+          - text: optional deps
+        - button "Fit" [ref=f3e37] [cursor=pointer]
+        - button "Re-layout" [ref=f3e38] [cursor=pointer]
+    - complementary [ref=f3e40]:
+      - heading [level=2] [ref=f3e41]:
+        - code [ref=f3e42]: default
+      - paragraph [ref=f3e43]: mod name · 37 providers · 1016 hard / 506 optional dependers
+      - paragraph [ref=f3e44]:
+        - strong [ref=f3e45]: Only games provide this mod name.
+        - text: A mod that hard-depends on
+        - code [ref=f3e46]: default
+        - text: runs only in these 37 games; it can't be installed elsewhere.
+      - heading "Games that bundle it (37)" [level=3] [ref=f3e47]
+      - paragraph [ref=f3e48]:
+        - link "Minetest Game" [ref=f3e49] [cursor=pointer]:
+          - /url: "#/p/Luanti/minetest_game"
+        - text: ","
+        - link "Asuna" [ref=f3e50] [cursor=pointer]:
+          - /url: "#/p/EmptyStar/asuna"
+        - text: ","
+        - link "Capture the Flag" [ref=f3e51] [cursor=pointer]:
+          - /url: "#/p/rubenwardy/capturetheflag"
+        - text: ","
+        - link "Lord of the Test" [ref=f3e52] [cursor=pointer]:
+          - /url: "#/p/Amaz/lordofthetest"
+        - text: ","
+        - link "Nonsensical Skyblock" [ref=f3e53] [cursor=pointer]:
+          - /url: "#/p/Kimapr/nonsensical_skyblock"
+        - text: ","
+        - link "XaEnvironment" [ref=f3e54] [cursor=pointer]:
+          - /url: "#/p/AiTechEye/xaenvironment"
+        - text: ","
+        - link "Castrum" [ref=f3e55] [cursor=pointer]:
+          - /url: "#/p/1248/castrum"
+        - text: ","
+        - link "NewPlanet" [ref=f3e56] [cursor=pointer]:
+          - /url: "#/p/Hi_World/newplanet"
+        - text: ","
+        - link "CS:MT (BlockAssault)" [ref=f3e57] [cursor=pointer]:
+          - /url: "#/p/KareaGhandTrail/block_assault"
+        - text: ","
+        - link "Mesecons lab" [ref=f3e58] [cursor=pointer]:
+          - /url: "#/p/BuckarooBanzay/mesecons_lab"
+        - text: ","
+        - link "WhyNot?" [ref=f3e59] [cursor=pointer]:
+          - /url: "#/p/bell07/whynot_game"
+        - text: ","
+        - link "Voxelgarden" [ref=f3e60] [cursor=pointer]:
+          - /url: "#/p/Casimir/voxelgarden"
+        - text: ","
+        - link "Adventurelands" [ref=f3e61] [cursor=pointer]:
+          - /url: "#/p/TechnoWolfTV/adventurelands"
+        - text: ","
+        - link "Dreambuilder Game" [ref=f3e62] [cursor=pointer]:
+          - /url: "#/p/mt-mods/dreambuilder_game"
+        - text: ","
+        - link "yams RPG" [ref=f3e63] [cursor=pointer]:
+          - /url: "#/p/jara25/yams"
+        - text: ","
+        - link "Proxima Survival" [ref=f3e64] [cursor=pointer]:
+          - /url: "#/p/debiankaios/proxima_survival"
+        - text: ","
+        - link "Wyrm Cube" [ref=f3e65] [cursor=pointer]:
+          - /url: "#/p/Replicat/wyrm_cube"
+        - text: ","
+        - link "QiskitBlocks" [ref=f3e66] [cursor=pointer]:
+          - /url: "#/p/JavaFXpert/qiskitblocks"
+        - text: ","
+        - link "TolkienTest" [ref=f3e67] [cursor=pointer]:
+          - /url: "#/p/NotaB/tolkientest"
+        - text: ","
+        - link "No Man's Land" [ref=f3e68] [cursor=pointer]:
+          - /url: "#/p/Big_Caballito/no_mans_land"
+        - text: ","
+        - link "Run Or Fall" [ref=f3e69] [cursor=pointer]:
+          - /url: "#/p/niwla23/runorfall"
+        - text: ","
+        - link "Voxel Dungeon" [ref=f3e70] [cursor=pointer]:
+          - /url: "#/p/Noodlemire/voxeldungeon"
+        - text: ","
+        - link "gridlocks" [ref=f3e71] [cursor=pointer]:
+          - /url: "#/p/jgordon510/gridlocks"
+        - text: ","
+        - link "Gaifa cubed" [ref=f3e72] [cursor=pointer]:
+          - /url: "#/p/ZughyEdu/gaifa_al_cubo"
+        - text: ","
+        - link "BlockAssault MapMaker" [ref=f3e73] [cursor=pointer]:
+          - /url: "#/p/KareaGhandTrail/block_assault_mapmaker"
+        - text: ","
+        - link "Porko" [ref=f3e74] [cursor=pointer]:
+          - /url: "#/p/nam/porko"
+        - text: ","
+        - link "Lean Core" [ref=f3e75] [cursor=pointer]:
+          - /url: "#/p/8a7l/lean_core"
+        - text: ","
+        - link "Epic Combat" [ref=f3e76] [cursor=pointer]:
+          - /url: "#/p/hilol/epic_combat"
+        - text: ","
+        - link "Raining Nodes" [ref=f3e77] [cursor=pointer]:
+          - /url: "#/p/TheFanne/raining_nodes"
+        - text: ","
+        - link "Regnum" [ref=f3e78] [cursor=pointer]:
+          - /url: "#/p/1248/regnum"
+        - text: ","
+        - link "QuantumBuilder - a QiskitBlocks fork" [ref=f3e79] [cursor=pointer]:
+          - /url: "#/p/miroptics/qiskitblocks_miro"
+        - text: ","
+        - link "Occupy Moon" [ref=f3e80] [cursor=pointer]:
+          - /url: "#/p/rlars/occupymoon_game"
+        - text: ","
+        - link "Escape The Beast" [ref=f3e81] [cursor=pointer]:
+          - /url: "#/p/Thunder1035/etb"
+        - text: ","
+        - link "SUPERPOSITION" [ref=f3e82] [cursor=pointer]:
+          - /url: "#/p/AtomicCheese/superposition"
+        - text: ","
+        - link "Berzerkpt" [ref=f3e83] [cursor=pointer]:
+          - /url: "#/p/carlos_rupp/berzerkpt"
+        - text: ","
+        - link "Holiday Horrors" [ref=f3e84] [cursor=pointer]:
+          - /url: "#/p/sunnysideup/holidayhorrors"
+        - text: ","
+        - link "Arcade3D" [ref=f3e85] [cursor=pointer]:
+          - /url: "#/p/Thunder1035/pacman"
+      - paragraph [ref=f3e86]:
+        - text: Used without being declared by 43 analyzed packages (
+        - link "show" [ref=f3e87] [cursor=pointer]:
+          - /url: "#/sql"
+        - text: ).
+      - heading "Hard dependers (1016)" [level=3] [ref=f3e88]
+      - paragraph [ref=f3e89]:
+        - link "Ethereal NG" [ref=f3e90] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/ethereal"
+        - text: ","
+        - link "Techage Modpack" [ref=f3e91] [cursor=pointer]:
+          - /url: "#/p/joe7575/techage_modpack"
+        - text: ","
+        - link "X-Decor-libre" [ref=f3e92] [cursor=pointer]:
+          - /url: "#/p/Wuzzy/xdecor"
+        - text: ","
+        - link "Ranged Weapons" [ref=f3e93] [cursor=pointer]:
+          - /url: "#/p/Lars/rangedweapons"
+        - text: ","
+        - link "Digtron" [ref=f3e94] [cursor=pointer]:
+          - /url: "#/p/FaceDeer/digtron"
+        - text: ","
+        - link "Nether" [ref=f3e95] [cursor=pointer]:
+          - /url: "#/p/PilzAdam/nether"
+        - text: ","
+        - link "Motorboat" [ref=f3e96] [cursor=pointer]:
+          - /url: "#/p/apercy/motorboat"
+        - text: ","
+        - link "Legboat" [ref=f3e97] [cursor=pointer]:
+          - /url: "#/p/ekl/legboat"
+        - text: ","
+        - link "Not So Simple Mobs" [ref=f3e98] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/nssm"
+        - text: ","
+        - link "Extra Biomes" [ref=f3e99] [cursor=pointer]:
+          - /url: "#/p/CowboyLv/ebiomes"
+        - text: ","
+        - link "Technic" [ref=f3e100] [cursor=pointer]:
+          - /url: "#/p/RealBadAngel/technic"
+        - text: ","
+        - link "Plantlife" [ref=f3e101] [cursor=pointer]:
+          - /url: "#/p/mt-mods/plantlife_modpack"
+        - text: ","
+        - link "Anvil" [ref=f3e102] [cursor=pointer]:
+          - /url: "#/p/FaceDeer/anvil"
+        - text: ","
+        - link "Stamina" [ref=f3e103] [cursor=pointer]:
+          - /url: "#/p/sofar/stamina"
+        - text: ","
+        - link "pathv7 redo! (Mapgen V7 only)" [ref=f3e104] [cursor=pointer]:
+          - /url: "#/p/Emojiminetest/pathv7"
+        - text: ","
+        - link "Laptop" [ref=f3e105] [cursor=pointer]:
+          - /url: "#/p/GamingAssociation39/laptop"
+        - text: ","
+        - link "Pizzaria" [ref=f3e106] [cursor=pointer]:
+          - /url: "#/p/Extex/jelys_pizzaria"
+        - text: ","
+        - link "Block League" [ref=f3e107] [cursor=pointer]:
+          - /url: "#/p/Zughy/block_league"
+        - text: ","
+        - link "Islands" [ref=f3e108] [cursor=pointer]:
+          - /url: "#/p/Termos/islands"
+        - text: ","
+        - link "Nextgen Fungi" [ref=f3e109] [cursor=pointer]:
+          - /url: "#/p/StarNinjas/nextgen_fungi"
+        - text: ","
+        - link "Multidecor" [ref=f3e110] [cursor=pointer]:
+          - /url: "#/p/Andrey01/multidecor"
+        - text: ","
+        - link "Motorbike" [ref=f3e111] [cursor=pointer]:
+          - /url: "#/p/Extex/motorbike"
+        - text: ","
+        - link "PaleoTest" [ref=f3e112] [cursor=pointer]:
+          - /url: "#/p/ElCeejo/paleotest"
+        - text: ","
+        - link "Caverealms Lite" [ref=f3e113] [cursor=pointer]:
+          - /url: "#/p/Shara/caverealms"
+        - text: ","
+        - link "balrog (flux's fork)" [ref=f3e114] [cursor=pointer]:
+          - /url: "#/p/rheo/mobs_balrog"
+        - text: ","
+        - link "Plutonium's ships" [ref=f3e115] [cursor=pointer]:
+          - /url: "#/p/Plutonium/plutoniumships"
+        - text: ","
+        - link "Dmobs" [ref=f3e116] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/dmobs"
+        - text: ","
+        - link "Builtin Item" [ref=f3e117] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/builtin_item"
+        - text: ","
+        - link "Dungeons Plus" [ref=f3e118] [cursor=pointer]:
+          - /url: "#/p/EmptyStar/dungeonsplus"
+        - text: ","
+        - link "Wooden Bucket" [ref=f3e119] [cursor=pointer]:
+          - /url: "#/p/Hume2/bucket_wooden"
+        - text: ","
+        - link "Sandwiches!" [ref=f3e120] [cursor=pointer]:
+          - /url: "#/p/Annalysa/sandwiches"
+        - text: ","
+        - link "Swamp Biome" [ref=f3e121] [cursor=pointer]:
+          - /url: "#/p/Atlante/swamp"
+        - text: ","
+        - link "Wilhelmines Living Nether" [ref=f3e122] [cursor=pointer]:
+          - /url: "#/p/mt-mods/livingnether"
+        - text: ","
+        - link "Beautiful Flowers" [ref=f3e123] [cursor=pointer]:
+          - /url: "#/p/1faco/beautiflowers"
+        - text: ","
+        - link "Ultralight Trike" [ref=f3e124] [cursor=pointer]:
+          - /url: "#/p/apercy/trike"
+        - text: ","
+        - link "Natural slopes for Minetest Game" [ref=f3e125] [cursor=pointer]:
+          - /url: "#/p/karamel/naturalslopes_minetest_game"
+        - text: ","
+        - link "Corroded Metal" [ref=f3e126] [cursor=pointer]:
+          - /url: "#/p/BLOCKYBearclaw/corroded_metal"
+        - text: ","
+        - link "3D Furniture by tony-ka" [ref=f3e127] [cursor=pointer]:
+          - /url: "#/p/CalebJ/3dforniture"
+        - text: ","
+        - link "Aerial" [ref=f3e128] [cursor=pointer]:
+          - /url: "#/p/EmptyStar/aerial"
+        - text: ","
+        - link "TechPack" [ref=f3e129] [cursor=pointer]:
+          - /url: "#/p/joe7575/techpack"
+        - text: ","
+        - link "Bees" [ref=f3e130] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/bees"
+        - text: ","
+        - link "new minerals" [ref=f3e131] [cursor=pointer]:
+          - /url: "#/p/Giga_M/expansion_armor"
+        - text: ","
+        - link "Wilhelmines Living Jungle" [ref=f3e132] [cursor=pointer]:
+          - /url: "#/p/mt-mods/livingjungle"
+        - text: ","
+        - link "Pyramids (with treasures)" [ref=f3e133] [cursor=pointer]:
+          - /url: "#/p/Wuzzy/tsm_pyramids"
+        - text: ","
+        - link "Other Worlds" [ref=f3e134] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/other_worlds"
+        - text: ","
+        - link "Airship" [ref=f3e135] [cursor=pointer]:
+          - /url: "#/p/apercy/ap_airship"
+        - text: ","
+        - link "Stained Glass" [ref=f3e136] [cursor=pointer]:
+          - /url: "#/p/alerikaisattera/stainedglass"
+        - text: ","
+        - link "Hyperloop" [ref=f3e137] [cursor=pointer]:
+          - /url: "#/p/joe7575/hyperloop"
+        - text: ","
+        - link "Nether" [ref=f3e138] [cursor=pointer]:
+          - /url: "#/p/Hybrid Dog/nether"
+        - text: ","
+        - link "Dynamic Trees" [ref=f3e139] [cursor=pointer]:
+          - /url: "#/p/Tarruvi/dynamic_trees"
+        - text: ","
+        - 'link "Horror: Rescared" [ref=f3e140] [cursor=pointer]':
+          - /url: "#/p/SkyBuilder1717/horror_fork"
+        - text: ","
+        - link "Universal geometry realm" [ref=f3e141] [cursor=pointer]:
+          - /url: "#/p/paramat/flexrealm"
+        - text: ","
+        - link "Flower cow" [ref=f3e142] [cursor=pointer]:
+          - /url: "#/p/DrPlamsa/flower_cow"
+        - text: ","
+        - link "Minor Redefinitions" [ref=f3e143] [cursor=pointer]:
+          - /url: "#/p/Linuxdirk/redef"
+        - text: ","
+        - link "Industrious" [ref=f3e144] [cursor=pointer]:
+          - /url: "#/p/StarNinjas/industrious"
+        - text: ","
+        - link "Computertest" [ref=f3e145] [cursor=pointer]:
+          - /url: "#/p/zaners123/computertest"
+        - text: ","
+        - link "mime (flux's fork)" [ref=f3e146] [cursor=pointer]:
+          - /url: "#/p/rheo/mobs_mime"
+        - text: ","
+        - link "the curse of the corngirl" [ref=f3e147] [cursor=pointer]:
+          - /url: "#/p/Soundwavez/corngirl"
+        - text: ","
+        - link "Alive AI" [ref=f3e148] [cursor=pointer]:
+          - /url: "#/p/AiTechEye/aliveai"
+        - text: ","
+        - link "X Obsidianmese" [ref=f3e149] [cursor=pointer]:
+          - /url: "#/p/SaKeL/x_obsidianmese"
+        - text: ","
+        - link "Wilhelmines People" [ref=f3e150] [cursor=pointer]:
+          - /url: "#/p/Liil/people"
+        - text: ","
+        - link "Wilhelmines Marinara Mobs" [ref=f3e151] [cursor=pointer]:
+          - /url: "#/p/Liil/marinaramobs"
+        - text: ","
+        - link "Algae" [ref=f3e152] [cursor=pointer]:
+          - /url: "#/p/Just_Visiting/algae"
+        - text: ","
+        - link "Ropes" [ref=f3e153] [cursor=pointer]:
+          - /url: "#/p/FaceDeer/ropes"
+        - text: ","
+        - link "Doors Redo" [ref=f3e154] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/doors"
+        - text: ","
+        - link "The Build Spawner" [ref=f3e155] [cursor=pointer]:
+          - /url: "#/p/Thunder1035/the_build_spawner"
+        - text: ","
+        - link "Nate's CTF Guns" [ref=f3e156] [cursor=pointer]:
+          - /url: "#/p/cracksmoka420/ctf_guns"
+        - text: ","
+        - link "More Structures" [ref=f3e157] [cursor=pointer]:
+          - /url: "#/p/ClothierEdward/more_structures"
+        - text: ","
+        - link "Fishing Boat" [ref=f3e158] [cursor=pointer]:
+          - /url: "#/p/apercy/fishing_boat"
+        - text: ","
+        - link "Experimental Villages Mapgen" [ref=f3e159] [cursor=pointer]:
+          - /url: "#/p/Nore/mg"
+        - text: ","
+        - link "Wilhelmines Natural Biomes" [ref=f3e160] [cursor=pointer]:
+          - /url: "#/p/Liil/naturalbiomes"
+        - text: ","
+        - link "Roads" [ref=f3e161] [cursor=pointer]:
+          - /url: "#/p/cheapie/roads"
+        - text: ","
+        - link "Flowerpot" [ref=f3e162] [cursor=pointer]:
+          - /url: "#/p/sofar/flowerpot"
+        - text: ","
+        - link "Baked Clay" [ref=f3e163] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/bakedclay"
+        - text: ","
+        - link "Tool Ranks" [ref=f3e164] [cursor=pointer]:
+          - /url: "#/p/lisacvuk/toolranks"
+        - text: ","
+        - link "Worldgate" [ref=f3e165] [cursor=pointer]:
+          - /url: "#/p/EmptyStar/worldgate"
+        - text: ","
+        - link "Too Much TNT!" [ref=f3e166] [cursor=pointer]:
+          - /url: "#/p/SkyBuilder1717/too_many_tnt"
+        - text: ","
+        - link "Randungeon" [ref=f3e167] [cursor=pointer]:
+          - /url: "#/p/Phii/randungeon"
+        - text: ","
+        - link "Badass Mech" [ref=f3e168] [cursor=pointer]:
+          - /url: "#/p/Soundwavez/bam_mod"
+        - text: ","
+        - link "Magicalities" [ref=f3e169] [cursor=pointer]:
+          - /url: "#/p/IcyDiamond/magicalities"
+        - text: ","
+        - link "Fancy Stained Glass" [ref=f3e170] [cursor=pointer]:
+          - /url: "#/p/v-rob/glass_stained"
+        - text: ","
+        - link "Sounds Redone" [ref=f3e171] [cursor=pointer]:
+          - /url: "#/p/StarNinjas/sounds_redone"
+        - text: ","
+        - link "Smart Shop" [ref=f3e172] [cursor=pointer]:
+          - /url: "#/p/AiTechEye/smartshop"
+        - text: ","
+        - link "Witches" [ref=f3e173] [cursor=pointer]:
+          - /url: "#/p/FreeLikeGNU/witches"
+        - text: ","
+        - link "Path" [ref=f3e174] [cursor=pointer]:
+          - /url: "#/p/Atlante/atl_path"
+        - text: ","
+        - link "Radar / ATC" [ref=f3e175] [cursor=pointer]:
+          - /url: "#/p/Luffy0805/radar_atc"
+        - text: ","
+        - link "Rocks" [ref=f3e176] [cursor=pointer]:
+          - /url: "#/p/Just_Visiting/rocks"
+        - text: ","
+        - link "lil lizard pal" [ref=f3e177] [cursor=pointer]:
+          - /url: "#/p/Soundwavez/pochie_mod"
+        - text: ","
+        - link "Snowmen" [ref=f3e178] [cursor=pointer]:
+          - /url: "#/p/KomputerOverload/snowmen"
+        - text: ","
+        - link "Alchemy" [ref=f3e179] [cursor=pointer]:
+          - /url: "#/p/TheAlchemist0033/alchemy"
+        - text: ","
+        - link "Wooden Bucket" [ref=f3e180] [cursor=pointer]:
+          - /url: "#/p/mt-mods/wooden_bucket"
+        - text: ","
+        - link "Cheese" [ref=f3e181] [cursor=pointer]:
+          - /url: "#/p/Annalysa/cheese"
+        - text: ","
+        - link "Slimes inspired by TheManaWorld" [ref=f3e182] [cursor=pointer]:
+          - /url: "#/p/mt-mods/tmw_slimes"
+        - text: ","
+        - link "Australia" [ref=f3e183] [cursor=pointer]:
+          - /url: "#/p/demon_boy/australia"
+        - text: ","
+        - link "Ore Deposits" [ref=f3e184] [cursor=pointer]:
+          - /url: "#/p/Tarruvi/ore_deposits"
+        - text: ","
+        - link "Confetti" [ref=f3e185] [cursor=pointer]:
+          - /url: "#/p/Krunegan/confetti"
+        - text: ","
+        - link "Large Bricks" [ref=f3e186] [cursor=pointer]:
+          - /url: "#/p/AwesomeDragon97/large_bricks"
+        - text: ","
+        - link "Fancy Vend" [ref=f3e187] [cursor=pointer]:
+          - /url: "#/p/ChimneySwift/fancy_vend"
+        - text: ","
+        - link "Cave Explorer" [ref=f3e188] [cursor=pointer]:
+          - /url: "#/p/Hume2/cave_explorer"
+        - text: ","
+        - link "Pathogen" [ref=f3e189] [cursor=pointer]:
+          - /url: "#/p/Bas080/pathogen"
+        - text: ","
+        - link "Working villages" [ref=f3e190] [cursor=pointer]:
+          - /url: "#/p/theFox/working_villages"
+        - text: ","
+        - link "Magic Materials" [ref=f3e191] [cursor=pointer]:
+          - /url: "#/p/mt-mods/magic_materials"
+        - text: ","
+        - link "Mobs Skeletons" [ref=f3e192] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/mobs_skeletons"
+        - text: ","
+        - link "bweapons modpack" [ref=f3e193] [cursor=pointer]:
+          - /url: "#/p/mt-mods/bweapons_modpack"
+        - text: ","
+        - link "Scientifically Accurate TNT" [ref=f3e194] [cursor=pointer]:
+          - /url: "#/p/AwesomeDragon97/tnt"
+        - text: ","
+        - link "Wilhelmines Marinara" [ref=f3e195] [cursor=pointer]:
+          - /url: "#/p/mt-mods/marinara"
+        - text: ","
+        - link "Simple Skins" [ref=f3e196] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/simple_skins"
+        - text: ","
+        - link "Minetest Oneblock" [ref=f3e197] [cursor=pointer]:
+          - /url: "#/p/zempik10/minetest_oneblock"
+        - text: ","
+        - link "Connected Chests" [ref=f3e198] [cursor=pointer]:
+          - /url: "#/p/Hybrid Dog/connected_chests"
+        - text: ","
+        - link "Moretrains" [ref=f3e199] [cursor=pointer]:
+          - /url: "#/p/gpcf/moretrains"
+        - text: ","
+        - link "Amethyst" [ref=f3e200] [cursor=pointer]:
+          - /url: "#/p/alerikaisattera/amethyst_new"
+        - text: ","
+        - link "Beds Redo" [ref=f3e201] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/beds"
+        - text: ","
+        - link "Ocean" [ref=f3e202] [cursor=pointer]:
+          - /url: "#/p/StarNinjas/xocean"
+        - text: ","
+        - link "Mese Trains" [ref=f3e203] [cursor=pointer]:
+          - /url: "#/p/xenonca/mese_trains"
+        - text: ","
+        - link "Minertrade" [ref=f3e204] [cursor=pointer]:
+          - /url: "#/p/Lunovox/minertrade"
+        - text: ","
+        - link "Wilhelmines Living Floatlands" [ref=f3e205] [cursor=pointer]:
+          - /url: "#/p/Liil/livingfloatlands"
+        - text: ","
+        - link "Spears" [ref=f3e206] [cursor=pointer]:
+          - /url: "#/p/Echoes91/spears"
+        - text: ","
+        - link "Technic Plus" [ref=f3e207] [cursor=pointer]:
+          - /url: "#/p/mt-mods/technic_plus"
+        - text: ","
+        - link "Obsidianstuff Redo" [ref=f3e208] [cursor=pointer]:
+          - /url: "#/p/OgelGames/obsidianstuff"
+        - text: ","
+        - link "Wilhelmines Living Caves Mobs" [ref=f3e209] [cursor=pointer]:
+          - /url: "#/p/mt-mods/livingcavesmobs"
+        - text: …
+      - heading "Optional dependers (506)" [level=3] [ref=f3e210]
+      - paragraph [ref=f3e211]:
+        - link "Mineclonia" [ref=f3e212] [cursor=pointer]:
+          - /url: "#/p/ryvnf/mineclonia"
+        - text: ","
+        - link "VoxeLibre (formerly MineClone2)" [ref=f3e213] [cursor=pointer]:
+          - /url: "#/p/Wuzzy/mineclone2"
+        - text: ","
+        - link "Animalia" [ref=f3e214] [cursor=pointer]:
+          - /url: "#/p/ElCeejo/animalia"
+        - text: ","
+        - link "3D Armor" [ref=f3e215] [cursor=pointer]:
+          - /url: "#/p/stu/3d_armor"
+        - text: ","
+        - link "Draconis" [ref=f3e216] [cursor=pointer]:
+          - /url: "#/p/ElCeejo/draconis"
+        - text: ","
+        - link "Everness" [ref=f3e217] [cursor=pointer]:
+          - /url: "#/p/SaKeL/everness"
+        - text: ","
+        - link "Mobs Redo API" [ref=f3e218] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/mobs"
+        - text: ","
+        - link "Mesecons" [ref=f3e219] [cursor=pointer]:
+          - /url: "#/p/Jeija/mesecons"
+        - text: ","
+        - link "Farming Redo" [ref=f3e220] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/farming"
+        - text: ","
+        - link "Mobs Monster" [ref=f3e221] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/mobs_monster"
+        - text: ","
+        - link "Mobs Animal" [ref=f3e222] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/mobs_animal"
+        - text: ","
+        - link "Unified Inventory" [ref=f3e223] [cursor=pointer]:
+          - /url: "#/p/RealBadAngel/unified_inventory"
+        - text: ","
+        - link "Wielded Light" [ref=f3e224] [cursor=pointer]:
+          - /url: "#/p/bell07/wielded_light"
+        - text: ","
+        - 'link "Skyblock: Zero" [ref=f3e225] [cursor=pointer]':
+          - /url: "#/p/zanderdev/skyblock_zero"
+        - text: ","
+        - link "Pride Flags" [ref=f3e226] [cursor=pointer]:
+          - /url: "#/p/Wuzzy/pride_flags"
+        - text: ","
+        - link "Exile" [ref=f3e227] [cursor=pointer]:
+          - /url: "#/p/Mantar/exile"
+        - text: ","
+        - link "Storage Drawers" [ref=f3e228] [cursor=pointer]:
+          - /url: "#/p/LNJ/drawers"
+        - text: ","
+        - link "Steampunk Blimp" [ref=f3e229] [cursor=pointer]:
+          - /url: "#/p/apercy/steampunk_blimp"
+        - text: ","
+        - link "Wilhelmines Animal World" [ref=f3e230] [cursor=pointer]:
+          - /url: "#/p/mt-mods/animalworld"
+        - text: ","
+        - link "Age of Mending" [ref=f3e231] [cursor=pointer]:
+          - /url: "#/p/Sumianvoice/pmb_core"
+        - text: ","
+        - link "Advanced Trains" [ref=f3e232] [cursor=pointer]:
+          - /url: "#/p/orwell/advtrains"
+        - text: ","
+        - link "Bonemeal" [ref=f3e233] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/bonemeal"
+        - text: ","
+        - link "Hades Revisited" [ref=f3e234] [cursor=pointer]:
+          - /url: "#/p/Wuzzy/hades_revisited"
+        - text: ","
+        - link "Pipeworks" [ref=f3e235] [cursor=pointer]:
+          - /url: "#/p/mt-mods/pipeworks"
+        - text: ","
+        - link "Leads" [ref=f3e236] [cursor=pointer]:
+          - /url: "#/p/SilverSandstone/leads"
+        - text: ","
+        - link "More Blocks" [ref=f3e237] [cursor=pointer]:
+          - /url: "#/p/Calinou/moreblocks"
+        - text: ","
+        - link "Logistica" [ref=f3e238] [cursor=pointer]:
+          - /url: "#/p/ZenonSeth/logistica"
+        - text: ","
+        - link "Little Lady" [ref=f3e239] [cursor=pointer]:
+          - /url: "#/p/Just_Visiting/littlelady"
+        - text: ","
+        - link "Goblins" [ref=f3e240] [cursor=pointer]:
+          - /url: "#/p/FreeLikeGNU/goblins"
+        - text: ","
+        - link "More Trees!" [ref=f3e241] [cursor=pointer]:
+          - /url: "#/p/mt-mods/moretrees"
+        - text: ","
+        - link "Elepower" [ref=f3e242] [cursor=pointer]:
+          - /url: "#/p/IcyDiamond/elepower"
+        - text: ","
+        - link "Protector Redo" [ref=f3e243] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/protector"
+        - text: ","
+        - link "Super sam" [ref=f3e244] [cursor=pointer]:
+          - /url: "#/p/BuckarooBanzay/super_sam"
+        - text: ","
+        - link "Too Many Stones" [ref=f3e245] [cursor=pointer]:
+          - /url: "#/p/JoeEnderman/too_many_stones"
+        - text: ","
+        - link "Villages" [ref=f3e246] [cursor=pointer]:
+          - /url: "#/p/Sokomine/mg_villages"
+        - text: ","
+        - link "Agent X" [ref=f3e247] [cursor=pointer]:
+          - /url: "#/p/Just_Visiting/agent_x"
+        - text: ","
+        - link "Subways" [ref=f3e248] [cursor=pointer]:
+          - /url: "#/p/sylvester_kruin/subways"
+        - text: ","
+        - link "Jail Escape" [ref=f3e249] [cursor=pointer]:
+          - /url: "#/p/StarNinjas/jail_escape"
+        - text: ","
+        - link "Realtime Elevator" [ref=f3e250] [cursor=pointer]:
+          - /url: "#/p/shacknetisp/elevator"
+        - text: ","
+        - link "Dwarf Fortress style caverns" [ref=f3e251] [cursor=pointer]:
+          - /url: "#/p/FaceDeer/dfcaverns"
+        - text: ","
+        - link "Zoonami" [ref=f3e252] [cursor=pointer]:
+          - /url: "#/p/isaiah658/zoonami"
+        - text: ","
+        - link "LWScratch" [ref=f3e253] [cursor=pointer]:
+          - /url: "#/p/mt-mods/lwscratch"
+        - text: ","
+        - link "X Bows" [ref=f3e254] [cursor=pointer]:
+          - /url: "#/p/SaKeL/x_bows"
+        - text: ","
+        - link "Digilines" [ref=f3e255] [cursor=pointer]:
+          - /url: "#/p/Jeija/digilines"
+        - text: ","
+        - link "Item Physics" [ref=f3e256] [cursor=pointer]:
+          - /url: "#/p/Sumianvoice/item_physics"
+        - text: ","
+        - link "Unified Dyes" [ref=f3e257] [cursor=pointer]:
+          - /url: "#/p/mt-mods/unifieddyes"
+        - text: ","
+        - link "Mobs NPC" [ref=f3e258] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/mobs_npc"
+        - text: ","
+        - link "digistuff" [ref=f3e259] [cursor=pointer]:
+          - /url: "#/p/mt-mods/digistuff"
+        - text: ","
+        - link "Xcompat" [ref=f3e260] [cursor=pointer]:
+          - /url: "#/p/mt-mods/xcompat"
+        - text: ","
+        - link "Melterns" [ref=f3e261] [cursor=pointer]:
+          - /url: "#/p/IcyDiamond/melterns"
+        - text: ","
+        - link "Colour Hop" [ref=f3e262] [cursor=pointer]:
+          - /url: "#/p/talas/colourhop"
+        - text: ","
+        - link "X Farming" [ref=f3e263] [cursor=pointer]:
+          - /url: "#/p/SaKeL/x_farming"
+        - text: ","
+        - link "Homedecor" [ref=f3e264] [cursor=pointer]:
+          - /url: "#/p/mt-mods/homedecor_modpack"
+        - text: ","
+        - link "Stairs Redo" [ref=f3e265] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/stairs"
+        - text: ","
+        - link "Fumo Plushies" [ref=f3e266] [cursor=pointer]:
+          - /url: "#/p/aSliceOfCake/fumoplushies"
+        - text: ","
+        - link "Waffles" [ref=f3e267] [cursor=pointer]:
+          - /url: "#/p/GreenXenith/waffles"
+        - text: ","
+        - link "Thinking With Arrows" [ref=f3e268] [cursor=pointer]:
+          - /url: "#/p/Pixelo789/thinkingwitharrows"
+        - text: ","
+        - link "GGraffiti" [ref=f3e269] [cursor=pointer]:
+          - /url: "#/p/grorp/ggraffiti"
+        - text: ","
+        - link "Signs Lib" [ref=f3e270] [cursor=pointer]:
+          - /url: "#/p/mt-mods/signs_lib"
+        - text: ","
+        - link "CraftoPlus" [ref=f3e271] [cursor=pointer]:
+          - /url: "#/p/Mish7913/craftoplus"
+        - text: ","
+        - link "Basic Materials" [ref=f3e272] [cursor=pointer]:
+          - /url: "#/p/mt-mods/basic_materials"
+        - text: ","
+        - link "Ju52" [ref=f3e273] [cursor=pointer]:
+          - /url: "#/p/apercy/ju52"
+        - text: ","
+        - link "Cottages" [ref=f3e274] [cursor=pointer]:
+          - /url: "#/p/Sokomine/cottages"
+        - text: ","
+        - link "Cblocks" [ref=f3e275] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/cblocks"
+        - text: ","
+        - link "Riverflow map generator" [ref=f3e276] [cursor=pointer]:
+          - /url: "#/p/Gael de Sailly/mapgen_rivers"
+        - text: ","
+        - link "Wine" [ref=f3e277] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/wine"
+        - text: ","
+        - link "Ambience" [ref=f3e278] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/ambience"
+        - text: ","
+        - link "CrewMates" [ref=f3e279] [cursor=pointer]:
+          - /url: "#/p/aSliceOfCake/crewmate"
+        - text: ","
+        - link "Dreambuilder hotbar expander" [ref=f3e280] [cursor=pointer]:
+          - /url: "#/p/mt-mods/dreambuilder_hotbar"
+        - text: ","
+        - link "NextGen Bows" [ref=f3e281] [cursor=pointer]:
+          - /url: "#/p/StarNinjas/nextgen_bows"
+        - text: ","
+        - link "Dynamic Input-Held Eating" [ref=f3e282] [cursor=pointer]:
+          - /url: "#/p/TPH/tph_eating"
+        - text: ","
+        - link "Torch Bomb" [ref=f3e283] [cursor=pointer]:
+          - /url: "#/p/FaceDeer/torch_bomb"
+        - text: ","
+        - link "Lucky Block" [ref=f3e284] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/lucky_block"
+        - text: ","
+        - link "Nautilus" [ref=f3e285] [cursor=pointer]:
+          - /url: "#/p/apercy/nautilus"
+        - text: ","
+        - link "Item Frames and Pedestals" [ref=f3e286] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/itemframes"
+        - text: ","
+        - link "Pie" [ref=f3e287] [cursor=pointer]:
+          - /url: "#/p/TenPlus1/pie"
+        - text: ","
+        - link "Simple Airship" [ref=f3e288] [cursor=pointer]:
+          - /url: "#/p/Sumianvoice/sum_airship"
+        - text: ","
+        - link "Not So Simple Helicopter" [ref=f3e289] [cursor=pointer]:
+          - /url: "#/p/mt-mods/nss_helicopter"
+        - text: ","
+        - link "Inventory Pouches" [ref=f3e290] [cursor=pointer]:
+          - /url: "#/p/Impulse/inventory_pouches"
+        - text: ","
+        - link "Better Screwdriver" [ref=f3e291] [cursor=pointer]:
+          - /url: "#/p/12Me21/screwdriver2"

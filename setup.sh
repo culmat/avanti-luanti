@@ -10,7 +10,7 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TOP=300 MINIMAL=0 DEV=0 YES=0
-LDG_SOURCE="${LDG_SOURCE:-git+https://github.com/culmat/luanti-depgraph}"
+LDG_SOURCE="${LDG_SOURCE:-luanti-depgraph[search] @ git+https://github.com/culmat/luanti-depgraph}"
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -83,11 +83,12 @@ else
 	echo "Node 22+ is needed for zvec-grep; skipping"
 fi
 
-step "Dependency database"
+step "Dependency database and code search index"
 if ! ldg update; then
 	echo "No published snapshot reachable; building from ContentDB (about a minute)"
 	ldg build
 fi
+ldg code update || echo "No published code index; run 'ldg code index' after 'avanti corpus sync'"
 
 step "Reference games and corpus"
 if [[ $MINIMAL -eq 1 ]]; then
