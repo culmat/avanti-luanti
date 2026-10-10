@@ -26,6 +26,6 @@ Things avanti-luanti found or needs that belong upstream, not in a fork. Per [ai
 
 | Status | Target | Item |
 |---|---|---|
-| 📝 | [Mineclonia](https://codeberg.org/mineclonia/mineclonia) | With `random_mod_load_order = true`, some runs log `Item does not exist: mcl_buckets:bucket_empty`, `mcl_fishing:fish_raw`, … (seen 2026-10-10 on 5.17.0), suggesting an undeclared load-order dependency. Reproduce with `avanti test <any mod> --game mineclonia` a few times and capture the log. |
+| 📝 | [Mineclonia](https://codeberg.org/mineclonia/mineclonia) | With `random_mod_load_order = true`, runs intermittently log `Item does not exist: …`, suggesting undeclared load-order dependencies inside the game. Seen 2026-10-10: `mcl_buckets:bucket_empty`, `mcl_buckets:bucket_water`, `mcl_fishing:fish_raw`, `mcl_fishing:salmon_raw` (native, 5.17.0) and `mcl_flowers:fern`, `double_fern`, `tallgrass`, `double_grass`, `dandelion` (Docker, 5.10.0, culmat/avanti_hello CI). Next step: find the registering mod for these lookups (`zvec_grep_search` over the game), confirm the missing `depends`, then file with the exact log. |
 | 💡 | [mt-mods/xcompat](https://github.com/mt-mods/xcompat) | Extend coverage where `avanti test` shows gaps |
 | 💡 | Popular mods | Undeclared dependencies found by `ldg sql "select * from v_undeclared_refs where kind = 'global' and guarded = 0 and same_package = 0"`. Verify each by reading the code before reporting. |
