@@ -75,7 +75,7 @@ mtt.register_with_area("builds in an emerged area", {size = {x = 10, y = 10, z =
 
 ## luacheck
 
-The template's `.luacheckrc` uses `std = "luajit+minetest"`. It declares the mod's global in `globals`, and other mods' globals in `read_globals`. Regenerate those with `ldg globals .` after changing dependencies.
+The template's `.luacheckrc` uses `std = "luajit"` and lists the engine globals (`core`, `vector`, `ItemStack`, …) and builtin helpers (`table.copy`, `string.split`, …) explicitly, so it works with every luacheck version. Older distro packages don't know the `minetest` std. The mod's own global goes in `globals`, other mods' globals in `read_globals`. Regenerate the latter with `ldg globals .` after changing dependencies.
 
 **Typical findings:**
 - **Setting non-standard global:** you leaked a global. Make it `local`.

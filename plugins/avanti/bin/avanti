@@ -414,7 +414,7 @@ run_case() {
 		echo "deprecated_lua_api_handling = log"
 		if [[ $uses_mtt -eq 1 ]]; then
 			echo "mtt_enable = true"
-			echo "mtt_filter = $(jq -r '[.enable[]] | join(",")' <<<"$install_json")"
+			echo "mtt_filter = ${TARGET_MODS// /,}"
 		else
 			echo "avanti_smoke = true"
 		fi
