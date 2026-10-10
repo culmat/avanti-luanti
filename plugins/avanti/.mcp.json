@@ -2,14 +2,19 @@
   "mcpServers": {
     "luanti-depgraph": {
       "command": "ldg",
-      "args": ["mcp"],
+      "args": [
+        "mcp"
+      ],
       "env": {
         "LDG_HOME": "${LDG_HOME:-~/.avanti/depgraph}"
       }
     },
     "zvec-grep": {
       "command": "zg",
-      "args": ["--server", "--stdio"]
+      "args": [
+        "server",
+        "--stdio"
+      ]
     }
   }
 }

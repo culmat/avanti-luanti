@@ -190,8 +190,12 @@ cmd_corpus() {
 cmd_index() {
 	local path="${1:-$AVANTI_CORPUS}"
 	have zg || die "zvec-grep is not installed: npm i -g @zvec/zvec-grep"
-	note "indexing $path (local embeddings; first run downloads the model)"
-	(cd "$path" && zg --index . --embedding "${AVANTI_EMBEDDING:-local/potion-code-16m-v2}")
+	note "indexing $path (local embeddings; the first run downloads the model)"
+	if [[ -d "$path/.zvec-grep" ]]; then
+		zg index "$path" # incremental; reuses the stored embedding model
+	else
+		zg index "$path" --embedding "${AVANTI_EMBEDDING:-local/potion-code-16m-v2}"
+	fi
 }
 
 # ---------------------------------------------------------------- new
