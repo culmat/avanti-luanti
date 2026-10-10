@@ -1,0 +1,42 @@
+- generic [active] [ref=f5e1]:
+  - banner [ref=f5e2]:
+    - heading [level=1] [ref=f5e3]:
+      - link "Luanti dependency explorer" [ref=f5e4] [cursor=pointer]:
+        - /url: "#/"
+    - searchbox "Search packages or mod names" [ref=f5e6]
+    - generic [ref=f5e7]:
+      - text: Color for game
+      - combobox "Color for game" [ref=f5e8]:
+        - option "— by type —" [selected]
+        - option "Minetest Game"
+        - option "Mineclonia"
+        - option "VoxeLibre (formerly MineClone2)"
+        - option "Backrooms Test"
+        - option "Repixture"
+        - option "Glitch"
+        - option "Extra Ordinance"
+        - option "Asuna"
+        - option "NodeCore"
+        - option "Subway Miner"
+        - option "Alter"
+        - 'option "Skyblock: Zero"'
+    - navigation [ref=f5e9]:
+      - link "SQL" [ref=f5e10] [cursor=pointer]:
+        - /url: "#/sql"
+      - link "About" [ref=f5e11] [cursor=pointer]:
+        - /url: "#/about"
+  - main [ref=f5e12]:
+    - region "Dependency graph" [ref=f5e13]:
+      - generic [ref=f5e15]:
+        - generic [ref=f5e30]: mod / modpack
+        - generic [ref=f5e32]: game
+        - generic [ref=f5e34]: API only games provide (e.g. default)
+        - generic [ref=f5e36]: "Size: downloads (API: dependers). Arrow: depends on.626 packages without dependency links not drawn."
+      - generic [ref=f5e16]:
+        - generic [ref=f5e17]:
+          - checkbox "optional deps" [ref=f5e18]
+          - text: optional deps
+        - button "Fit" [ref=f5e19] [cursor=pointer]
+        - button "Re-layout" [ref=f5e20] [cursor=pointer]
+    - complementary [ref=f5e22]:
+      - paragraph [ref=f5e37]: No package culmat/glowshroom

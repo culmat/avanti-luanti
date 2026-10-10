@@ -56,7 +56,11 @@ cmd_doctor() {
 	tool jq fail "brew install jq / apt install jq"
 	tool uv fail "https://docs.astral.sh/uv/"
 	tool ldg fail "uv tool install git+https://github.com/culmat/luanti-depgraph" "ldg version"
-	tool luacheck warn "luarocks install luacheck"
+	if have luacheck && ! luacheck --version >/dev/null 2>&1; then
+		row warn luacheck "installed but broken (Lua 5.5?): luarocks --lua-version=5.1 --lua-dir=\"\$(brew --prefix luajit)\" install --local luacheck"
+	else
+		tool luacheck warn "luarocks --lua-version=5.1 install --local luacheck"
+	fi
 	tool stylua warn "brew install stylua / cargo install stylua"
 	tool lua-language-server warn "brew install lua-language-server"
 	tool zg warn "npm i -g @zvec/zvec-grep (Node 22+)" "zg --version"
@@ -189,8 +193,8 @@ cmd_corpus() {
 	shallow_sync https://gitlab.com/rubenwardy/minetest_modding_book.git "$AVANTI_VENDOR/modding_book"
 	shallow_sync https://github.com/BuckarooBanzay/mtt.git "$AVANTI_VENDOR/mtt"
 	if [[ "$top" -gt 0 ]]; then
-		note "fetching sources of the top $top packages (ldg build --git-top $top)"
-		LDG_CORPUS="$AVANTI_PACKAGES" ldg build --git-top "$top"
+		note "fetching sources of the top $top packages (ldg fetch --git-top $top)"
+		LDG_CORPUS="$AVANTI_PACKAGES" ldg fetch --git-top "$top"
 	fi
 	cmd_index
 }

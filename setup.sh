@@ -33,7 +33,7 @@ OS="$(uname -s)"
 step "System tools"
 if [[ "$OS" == Darwin ]]; then
 	have brew || { echo "Homebrew is required: https://brew.sh" >&2; exit 1; }
-	for formula in git jq uv node lua-language-server luarocks stylua; do
+	for formula in git jq uv node luajit lua-language-server luarocks stylua; do
 		if brew list --formula "$formula" >/dev/null 2>&1 || have "$formula"; then
 			echo "ok  $formula"
 		else
@@ -52,8 +52,14 @@ else
 		have "$tool" || echo "optional: $tool not found (see README for install hints)"
 	done
 fi
-if have luarocks && ! have luacheck; then
-	luarocks install --local luacheck
+# luacheck 1.2.0 doesn't run on Lua 5.5 (Homebrew's default for luarocks), so build it for
+# LuaJIT, the Lua 5.1 dialect Luanti itself uses.
+if have luarocks && ! luacheck --version >/dev/null 2>&1; then
+	if [[ "$OS" == Darwin ]]; then
+		luarocks --lua-version=5.1 --lua-dir="$(brew --prefix luajit)" install --local luacheck
+	else
+		luarocks --lua-version=5.1 install --local luacheck
+	fi
 	echo "luacheck installed to ~/.luarocks/bin; make sure it is on your PATH"
 fi
 
