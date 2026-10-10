@@ -70,8 +70,8 @@ jobs:
         engine: ${{ fromJSON(needs.matrix.outputs.engines) }}
     env:
       AVANTI_HOME: ${{ github.workspace }}/.avanti-home
-      TMPDIR: ${{ runner.temp }}
     steps:
+      - run: echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
       - uses: actions/checkout@v7
         with:
           path: ${{ github.event.repository.name }}

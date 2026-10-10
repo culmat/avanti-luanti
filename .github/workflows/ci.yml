@@ -26,8 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AVANTI_HOME: ${{ github.workspace }}/.avanti-home
-      TMPDIR: ${{ runner.temp }}
     steps:
+      - run: echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.3.0
       - run: sudo apt-get install -y lua-check
