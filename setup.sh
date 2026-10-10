@@ -9,8 +9,6 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-AVANTI_HOME="${AVANTI_HOME:-$HOME/.avanti}"
-export LDG_HOME="${LDG_HOME:-$AVANTI_HOME/depgraph}"
 TOP=300 MINIMAL=0 DEV=0 YES=0
 LDG_SOURCE="${LDG_SOURCE:-git+https://github.com/culmat/luanti-depgraph}"
 

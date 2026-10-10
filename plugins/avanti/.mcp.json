@@ -4,10 +4,7 @@
       "command": "ldg",
       "args": [
         "mcp"
-      ],
-      "env": {
-        "LDG_HOME": "${LDG_HOME:-~/.avanti/depgraph}"
-      }
+      ]
     },
     "zvec-grep": {
       "command": "zg",

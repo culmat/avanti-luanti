@@ -8,8 +8,10 @@ AVANTI_ENGINE_SRC="$AVANTI_CORPUS/engine"
 AVANTI_VENDOR="$AVANTI_CORPUS/vendor"
 AVANTI_ENGINE_VERSION="${AVANTI_ENGINE_VERSION:-5.17.0}"
 AVANTI_PLUGIN_ROOT="$(cd "$AVANTI_LIB/.." && pwd)"
-export LDG_HOME="${LDG_HOME:-$AVANTI_HOME/depgraph}"
-export LDG_CORPUS="${LDG_CORPUS:-$AVANTI_CORPUS/packages}"
+# ldg keeps its database in its own home (LDG_HOME, default ~/.local/share/luanti-depgraph),
+# shared with every other ldg user on this machine. Only the package sources avanti fetches
+# for search go into the avanti corpus.
+AVANTI_PACKAGES="$AVANTI_CORPUS/packages"
 
 if [[ -t 1 ]]; then
 	C_RED=$'\e[31m' C_GREEN=$'\e[32m' C_YELLOW=$'\e[33m' C_DIM=$'\e[2m' C_BOLD=$'\e[1m' C_OFF=$'\e[0m'

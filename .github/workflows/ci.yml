@@ -30,6 +30,8 @@ jobs:
       - run: echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: false
       - run: sudo apt-get install -y lua-check
       - run: uv tool install git+https://github.com/culmat/luanti-depgraph
       - run: ldg update || ldg build

@@ -23,7 +23,7 @@ Usage:
   avanti index [PATH]                (Re)build the zvec-grep semantic index (default: corpus)
   avanti env                         Print the environment avanti uses
 
-Environment: AVANTI_HOME=$AVANTI_HOME  LDG_HOME=$LDG_HOME
+Environment: AVANTI_HOME=$AVANTI_HOME (ldg uses its own LDG_HOME)
 EOF
 }
 
@@ -90,7 +90,7 @@ cmd_doctor() {
 			if awk -v a="$age" 'BEGIN { exit !(a > 7) }'; then
 				row warn "dependency db" "$age days old: ldg update"
 			else
-				row ok "dependency db" "$age days old ($LDG_HOME)"
+				row ok "dependency db" "$age days old"
 			fi
 		else
 			row fail "dependency db" "missing: ldg update"
@@ -182,7 +182,7 @@ cmd_corpus() {
 	shallow_sync https://github.com/BuckarooBanzay/mtt.git "$AVANTI_VENDOR/mtt"
 	if [[ "$top" -gt 0 ]]; then
 		note "fetching sources of the top $top packages (ldg build --git-top $top)"
-		ldg build --git-top "$top"
+		LDG_CORPUS="$AVANTI_PACKAGES" ldg build --git-top "$top"
 	fi
 	cmd_index "$AVANTI_CORPUS"
 }
@@ -592,8 +592,8 @@ AVANTI_CORPUS=$AVANTI_CORPUS
 AVANTI_GAMES=$AVANTI_GAMES
 AVANTI_ENGINE_VERSION=$AVANTI_ENGINE_VERSION
 AVANTI_PLUGIN_ROOT=$AVANTI_PLUGIN_ROOT
-LDG_HOME=$LDG_HOME
-LDG_CORPUS=$LDG_CORPUS
+AVANTI_PACKAGES=$AVANTI_PACKAGES
+LDG_HOME=${LDG_HOME:-(ldg default)}
 EOF
 }
 
