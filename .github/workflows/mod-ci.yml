@@ -55,7 +55,7 @@ jobs:
       - uses: lunarmodules/luacheck@v1
         with:
           args: ${{ inputs.path }}
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.0
       - run: uv tool install "${{ inputs.depgraph-source }}"
       - run: ldg update || ldg build
       - run: ldg lint "${{ inputs.path }}" --strict
@@ -80,7 +80,7 @@ jobs:
           repository: culmat/avanti-luanti
           ref: ${{ inputs.avanti-ref }}
           path: .avanti
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.0
       - run: uv tool install "${{ inputs.depgraph-source }}"
       - run: ldg update || ldg build
       - uses: actions/cache@v6
