@@ -1,0 +1,40 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: shellcheck
+        run: shellcheck -x setup.sh plugins/avanti/bin/avanti plugins/avanti/lib/common.sh plugins/avanti/hooks/*.sh
+      - name: JSON files parse
+        run: git ls-files '*.json' | grep -v templates/ | xargs -n1 jq empty
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Claude Code plugin and marketplace validate
+        run: |
+          npx -y @anthropic-ai/claude-code plugin validate . --strict
+          npx -y @anthropic-ai/claude-code plugin validate plugins/avanti --strict
+
+  selftest:
+    # Scaffold a mod from the template and run it through the same pipeline mods use.
+    runs-on: ubuntu-latest
+    env:
+      AVANTI_HOME: ${{ github.workspace }}/.avanti-home
+      TMPDIR: ${{ runner.temp }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+      - run: sudo apt-get install -y lua-check
+      - run: uv tool install git+https://github.com/culmat/luanti-depgraph
+      - run: ldg update || ldg build
+      - run: plugins/avanti/bin/avanti games sync minetest devtest
+      - run: plugins/avanti/bin/avanti new avanti_ci_demo --dir "$RUNNER_TEMP" --owner culmat --description "CI self-test mod."
+      - run: >
+          plugins/avanti/bin/avanti test "$RUNNER_TEMP/avanti_ci_demo"
+          --game minetest --game devtest --engine 5.17.0 --runner docker

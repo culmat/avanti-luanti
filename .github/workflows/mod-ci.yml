@@ -1,0 +1,102 @@
+# Reusable CI for Luanti mods made with avanti-luanti (or any mod). In the mod repo:
+#
+#   jobs:
+#     avanti:
+#       uses: culmat/avanti-luanti/.github/workflows/mod-ci.yml@v1
+#       with:
+#         games: minetest,mineclonia,mineclone2
+#
+# Lints with luacheck and `ldg lint --strict`, then runs the mod headlessly in every
+# game x engine combination with the official Luanti server images (random mod load order).
+name: avanti mod CI
+on:
+  workflow_call:
+    inputs:
+      games:
+        description: Comma-separated reference game ids (minetest, mineclonia, mineclone2, devtest)
+        type: string
+        default: minetest,mineclonia,mineclone2
+      engines:
+        description: Comma-separated engine versions (Docker image tags)
+        type: string
+        default: 5.10.0,5.17.0
+      path:
+        description: Path of the mod/modpack inside the repository
+        type: string
+        default: .
+      avanti-ref:
+        description: Ref of culmat/avanti-luanti providing the avanti CLI
+        type: string
+        default: v1
+      depgraph-source:
+        description: Where to install luanti-depgraph (ldg) from
+        type: string
+        default: git+https://github.com/culmat/luanti-depgraph
+
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      games: ${{ steps.split.outputs.games }}
+      engines: ${{ steps.split.outputs.engines }}
+    steps:
+      - id: split
+        env:
+          GAMES: ${{ inputs.games }}
+          ENGINES: ${{ inputs.engines }}
+        run: |
+          echo "games=$(jq -cn --arg s "$GAMES" '$s | split(",") | map(gsub("\\s"; "")) | map(select(length > 0))')" >> "$GITHUB_OUTPUT"
+          echo "engines=$(jq -cn --arg s "$ENGINES" '$s | split(",") | map(gsub("\\s"; "")) | map(select(length > 0))')" >> "$GITHUB_OUTPUT"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: lunarmodules/luacheck@v1
+        with:
+          args: ${{ inputs.path }}
+      - uses: astral-sh/setup-uv@v10
+      - run: uv tool install "${{ inputs.depgraph-source }}"
+      - run: ldg update || ldg build
+      - run: ldg lint "${{ inputs.path }}" --strict
+
+  test:
+    needs: [matrix, lint]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        game: ${{ fromJSON(needs.matrix.outputs.games) }}
+        engine: ${{ fromJSON(needs.matrix.outputs.engines) }}
+    env:
+      AVANTI_HOME: ${{ github.workspace }}/.avanti-home
+      TMPDIR: ${{ runner.temp }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: ${{ github.event.repository.name }}
+      - uses: actions/checkout@v7
+        with:
+          repository: culmat/avanti-luanti
+          ref: ${{ inputs.avanti-ref }}
+          path: .avanti
+      - uses: astral-sh/setup-uv@v10
+      - run: uv tool install "${{ inputs.depgraph-source }}"
+      - run: ldg update || ldg build
+      - uses: actions/cache@v6
+        with:
+          path: .avanti-home/corpus
+          key: avanti-game-${{ matrix.game }}-${{ github.run_id }}
+          restore-keys: avanti-game-${{ matrix.game }}-
+      - run: .avanti/plugins/avanti/bin/avanti games sync ${{ matrix.game }}
+      - name: avanti test
+        run: >
+          .avanti/plugins/avanti/bin/avanti test
+          "${{ github.event.repository.name }}/${{ inputs.path }}"
+          --game ${{ matrix.game }} --engine ${{ matrix.engine }} --runner docker --no-lint
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs-${{ matrix.game }}-${{ matrix.engine }}
+          path: ${{ runner.temp }}/avanti-test.*/debug.txt
+          if-no-files-found: ignore

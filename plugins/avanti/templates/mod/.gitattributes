@@ -1,0 +1,7 @@
+# Keep development files out of ContentDB release archives.
+/.github export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/.luacheckrc export-ignore
+/.stylua.toml export-ignore
+/.luarc.json export-ignore

@@ -1,0 +1,613 @@
+#!/usr/bin/env bash
+# avanti: command-line companion of the avanti Claude Code plugin (avanti-luanti).
+# Scaffolds Luanti mods and tests them headlessly across games and engine versions.
+set -euo pipefail
+
+AVANTI_LIB="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../lib" && pwd)"
+# shellcheck source=../lib/common.sh
+source "$AVANTI_LIB/common.sh"
+
+usage() {
+	cat <<EOF
+avanti: build and test Luanti mods (part of avanti-luanti)
+
+Usage:
+  avanti doctor [--quiet]            Check tools, games, database and search index
+  avanti games sync [ID...]          Clone or update reference games (default: all)
+  avanti games list                  Show reference games and whether they are synced
+  avanti corpus sync [--top N]       Engine docs + games + vendored references + top-N package
+                                     sources into \$AVANTI_HOME/corpus, then index it
+  avanti new NAME [options]          Scaffold a mod from the template (see avanti new --help)
+  avanti test [PATH] [options]       Lint, then run PATH headlessly in each game x engine
+  avanti serve [PATH] --game ID      Run a local server with the mod for play-testing
+  avanti index [PATH]                (Re)build the zvec-grep semantic index (default: corpus)
+  avanti env                         Print the environment avanti uses
+
+Environment: AVANTI_HOME=$AVANTI_HOME  LDG_HOME=$LDG_HOME
+EOF
+}
+
+# ---------------------------------------------------------------- doctor
+
+cmd_doctor() {
+	local quiet=0 problems=0
+	[[ "${1:-}" == "--quiet" ]] && quiet=1
+	row() { # row <ok|warn|fail> <name> <detail>
+		local mark
+		case "$1" in
+		ok) mark="${C_GREEN}ok  ${C_OFF}" ;;
+		warn) mark="${C_YELLOW}warn${C_OFF}" ;;
+		*) mark="${C_RED}FAIL${C_OFF}" ;;
+		esac
+		[[ "$1" == ok ]] || problems=$((problems + 1))
+		if [[ $quiet -eq 0 || "$1" != ok ]]; then
+			printf '%s  %-22s %s\n' "$mark" "$2" "$3"
+		fi
+	}
+	tool() { # tool <name> <ok|warn severity if missing> <hint> [version cmd]
+		if have "$1"; then
+			row ok "$1" "$(eval "${4:-$1 --version}" 2>&1 | head -1)"
+		else
+			row "$2" "$1" "missing: $3"
+		fi
+	}
+	tool git fail "install git"
+	tool jq fail "brew install jq / apt install jq"
+	tool uv fail "https://docs.astral.sh/uv/"
+	tool ldg fail "uv tool install git+https://github.com/culmat/luanti-depgraph" "ldg version"
+	tool luacheck warn "luarocks install luacheck"
+	tool stylua warn "brew install stylua / cargo install stylua"
+	tool lua-language-server warn "brew install lua-language-server"
+	tool zg warn "npm i -g @zvec/zvec-grep (Node 22+)" "zg --version"
+
+	local bin
+	if bin="$(luanti_bin)"; then
+		row ok "luanti (native)" "$(luanti_version "$bin") at $bin"
+	else
+		row warn "luanti (native)" "not found: brew install --cask luanti, or set LUANTI_BIN"
+	fi
+	if docker_ready; then
+		row ok "docker" "daemon running"
+	elif have docker; then
+		row warn "docker" "installed but daemon not running (colima start / start Docker Desktop)"
+	else
+		row warn "docker" "missing: only needed for the multi-engine matrix and CI parity"
+	fi
+
+	local id dir
+	while IFS=$'\t' read -r id _ _; do
+		dir="$(game_dir "$id")"
+		if [[ -n "$dir" ]]; then
+			row ok "game $id" "$dir"
+		else
+			row warn "game $id" "not synced: avanti games sync $id"
+		fi
+	done < <(games_table)
+
+	if have ldg; then
+		local age
+		if age="$(ldg info --json 2>/dev/null | jq -r '.age_days')"; then
+			if awk -v a="$age" 'BEGIN { exit !(a > 7) }'; then
+				row warn "dependency db" "$age days old: ldg update"
+			else
+				row ok "dependency db" "$age days old ($LDG_HOME)"
+			fi
+		else
+			row fail "dependency db" "missing: ldg update"
+		fi
+	fi
+	if [[ -d "$AVANTI_CORPUS/.zvec-grep" ]]; then
+		row ok "search index" "$AVANTI_CORPUS"
+	else
+		row warn "search index" "missing: avanti index"
+	fi
+	if [[ -d "$AVANTI_VENDOR/luanti-ide-helper" ]]; then
+		row ok "LuaLS annotations" "$AVANTI_VENDOR/luanti-ide-helper"
+	else
+		row warn "LuaLS annotations" "missing: avanti corpus sync"
+	fi
+	if [[ $quiet -eq 1 && $problems -gt 0 ]]; then
+		info "avanti doctor: $problems problem(s); run ./setup.sh or the hints above."
+	elif [[ $quiet -eq 0 ]]; then
+		info "$problems problem(s)"
+	fi
+	return 0
+}
+
+# ---------------------------------------------------------------- games & corpus
+
+shallow_sync() { # shallow_sync <url> <dir>
+	local url="$1" dir="$2"
+	if [[ -d "$dir/.git" ]]; then
+		note "updating $dir"
+		git -C "$dir" fetch --quiet --depth 1 origin HEAD
+		git -C "$dir" reset --quiet --hard FETCH_HEAD
+	else
+		note "cloning $url"
+		mkdir -p "$(dirname "$dir")"
+		git clone --quiet --depth 1 "$url" "$dir"
+	fi
+}
+
+engine_sync() {
+	local tag="$AVANTI_ENGINE_VERSION"
+	if [[ -d "$AVANTI_ENGINE_SRC/.git" ]] &&
+		[[ "$(git -C "$AVANTI_ENGINE_SRC" describe --tags 2>/dev/null)" == "$tag" ]]; then
+		return 0
+	fi
+	note "fetching engine $tag (doc/, builtin/, games/devtest)"
+	rm -rf "$AVANTI_ENGINE_SRC"
+	mkdir -p "$AVANTI_CORPUS"
+	git -c advice.detachedHead=false clone --quiet --depth 1 --branch "$tag" --filter=blob:none --sparse \
+		https://github.com/luanti-org/luanti.git "$AVANTI_ENGINE_SRC"
+	git -C "$AVANTI_ENGINE_SRC" sparse-checkout set doc builtin games/devtest
+}
+
+cmd_games() {
+	local sub="${1:-list}"
+	shift || true
+	case "$sub" in
+	list)
+		local id folder source dir
+		while IFS=$'\t' read -r id folder source; do
+			dir="$(game_dir "$id")"
+			printf '%-12s %-14s %s\n' "$id" "${dir:+synced}" "${dir:-$source}"
+		done < <(games_table)
+		;;
+	sync)
+		local wanted=("$@") id folder source
+		while IFS=$'\t' read -r id folder source; do
+			if [[ ${#wanted[@]} -gt 0 ]] && [[ ! " ${wanted[*]} " =~ \ ($id|$folder)\  ]]; then
+				continue
+			fi
+			if [[ "$source" == engine:* ]]; then
+				engine_sync
+			else
+				shallow_sync "$source" "$AVANTI_GAMES/$folder"
+			fi
+		done < <(games_table)
+		cmd_games list
+		;;
+	*) die "unknown: avanti games $sub" ;;
+	esac
+}
+
+cmd_corpus() {
+	local top=300
+	[[ "${1:-}" == "--top" ]] && top="${2:?--top needs a number}"
+	engine_sync
+	cmd_games sync
+	shallow_sync https://github.com/Voxrame/luanti-ide-helper.git "$AVANTI_VENDOR/luanti-ide-helper"
+	shallow_sync https://gitlab.com/rubenwardy/minetest_modding_book.git "$AVANTI_VENDOR/modding_book"
+	shallow_sync https://github.com/BuckarooBanzay/mtt.git "$AVANTI_VENDOR/mtt"
+	if [[ "$top" -gt 0 ]]; then
+		note "fetching sources of the top $top packages (ldg build --git-top $top)"
+		ldg build --git-top "$top"
+	fi
+	cmd_index "$AVANTI_CORPUS"
+}
+
+cmd_index() {
+	local path="${1:-$AVANTI_CORPUS}"
+	have zg || die "zvec-grep is not installed: npm i -g @zvec/zvec-grep"
+	note "indexing $path (local embeddings; first run downloads the model)"
+	(cd "$path" && zg --index . --embedding "${AVANTI_EMBEDDING:-local/potion-code-16m-v2}")
+}
+
+# ---------------------------------------------------------------- new
+
+new_usage() {
+	cat <<'EOF'
+Usage: avanti new NAME [--dir DIR] [--title T] [--description D] [--games g1,g2]
+                       [--license MIT|LGPL-2.1-or-later] [--owner GITHUB_OWNER]
+                       [--author CONTENTDB_USER] [--ai NONE|ASSISTED|GENERATED] [--force]
+EOF
+}
+
+cmd_new() {
+	local name="" dir="." title="" description="" games="minetest,mineclonia,mineclone2"
+	local license="MIT" owner="${AVANTI_GITHUB_OWNER:-}" author="${AVANTI_CONTENTDB_USER:-}"
+	local ai="ASSISTED" force=0
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+		--dir) dir="$2"; shift 2 ;;
+		--title) title="$2"; shift 2 ;;
+		--description) description="$2"; shift 2 ;;
+		--games) games="$2"; shift 2 ;;
+		--license) license="$2"; shift 2 ;;
+		--owner) owner="$2"; shift 2 ;;
+		--author) author="$2"; shift 2 ;;
+		--ai) ai="$2"; shift 2 ;;
+		--force) force=1; shift ;;
+		-h | --help) new_usage; return 0 ;;
+		-*) die "unknown option $1" ;;
+		*) name="$1"; shift ;;
+		esac
+	done
+	[[ -n "$name" ]] || { new_usage; exit 1; }
+	[[ "$name" =~ ^[a-z0-9_]+$ ]] || die "mod names may only contain a-z, 0-9 and _"
+	[[ "$ai" =~ ^(NONE|ASSISTED|GENERATED)$ ]] || die "--ai must be NONE, ASSISTED or GENERATED"
+	[[ "$license" =~ ^(MIT|LGPL-2.1-or-later)$ ]] || die "--license must be MIT or LGPL-2.1-or-later"
+	[[ -n "$owner" ]] || owner="$(gh api user --jq .login 2>/dev/null || echo YOUR_GITHUB_USER)"
+	[[ -n "$title" ]] || title="$(tr '_' ' ' <<<"$name" | awk '{ for (i = 1; i <= NF; i++) $i = toupper(substr($i, 1, 1)) substr($i, 2) } 1')"
+	[[ -n "$description" ]] || description="TODO: one sentence describing $title."
+
+	if have ldg; then
+		local check
+		check="$(ldg name-check "$name" ${author:+--author "$author"} --json 2>/dev/null || true)"
+		if [[ "$(jq -r '.available // empty' <<<"$check")" == "false" ]]; then
+			local taken
+			taken="$(jq -r '.used_by | join(", ")' <<<"$check")"
+			[[ $force -eq 1 ]] || die "'$name' is already used on ContentDB by $taken (policy 3.1). Pick another name or pass --force for a fork/drop-in replacement."
+			warn "'$name' is used by $taken; continuing because of --force"
+		fi
+	else
+		warn "ldg not installed: skipping the ContentDB name check"
+	fi
+
+	local target="$dir/$name"
+	[[ ! -e "$target" ]] || die "$target already exists"
+	mkdir -p "$target"
+	cp -R "$AVANTI_PLUGIN_ROOT/templates/mod/." "$target/"
+
+	local supported year games_yaml
+	supported="${games//,/, }"
+	year="$(date +%Y)"
+	games_yaml="$games"
+	local file
+	while IFS= read -r -d '' file; do
+		NAME="$name" TITLE="$title" DESCRIPTION="$description" SUPPORTED="$supported" \
+			LICENSE_ID="$license" OWNER="$owner" YEAR="$year" AI="$ai" GAMES="$games_yaml" \
+			perl -0pi -e '
+				s/\{\{modname\}\}/$ENV{NAME}/g; s/\{\{title\}\}/$ENV{TITLE}/g;
+				s/\{\{description\}\}/$ENV{DESCRIPTION}/g; s/\{\{supported_games\}\}/$ENV{SUPPORTED}/g;
+				s/\{\{license\}\}/$ENV{LICENSE_ID}/g; s/\{\{owner\}\}/$ENV{OWNER}/g;
+				s/\{\{year\}\}/$ENV{YEAR}/g; s/\{\{ai_disclosure\}\}/$ENV{AI}/g; s/\{\{games\}\}/$ENV{GAMES}/g;
+			' "$file"
+	done < <(find "$target" -type f -print0)
+
+	if [[ "$license" == "LGPL-2.1-or-later" ]]; then
+		local lgpl
+		lgpl="$(curl -fsSL https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt)" || die "could not download the LGPL text"
+		perl -0pi -e 'BEGIN { $t = shift } s/<<CODE_LICENSE_TEXT>>.*?<<END_CODE_LICENSE_TEXT>>/$t/s' "$lgpl" "$target/LICENSE"
+	else
+		perl -0pi -e 's/<<CODE_LICENSE_TEXT>>\n//; s/<<END_CODE_LICENSE_TEXT>>\n//' "$target/LICENSE"
+	fi
+
+	if [[ -d "$AVANTI_VENDOR/luanti-ide-helper" ]]; then
+		jq -n --arg lib "$AVANTI_VENDOR/luanti-ide-helper" '{
+			"$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+			"runtime.version": "LuaJIT", "workspace.library": [$lib],
+			"workspace.checkThirdParty": false, "diagnostics.globals": ["mtt"]
+		}' >"$target/.luarc.json"
+	fi
+	git -C "$target" init --quiet -b main
+	info "${C_GREEN}created${C_OFF} $target"
+	note "next: cd $target && avanti test"
+}
+
+# ---------------------------------------------------------------- test
+
+test_usage() {
+	cat <<'EOF'
+Usage: avanti test [PATH] [--game ID]... [--engine VERSION]... [--runner auto|native|docker]
+                   [--timeout SECONDS] [--keep] [--no-lint] [--fixed-order] [--json]
+
+Lints PATH (luacheck, stylua, ldg lint), then for every game x engine builds a throwaway
+world with PATH, the dependencies `ldg install` resolves for that game and a smoke-test
+mod (or mtt, if the mod uses it), runs the server headlessly with random_mod_load_order,
+and reports errors from the log. Only errors that mention the mod fail the run; errors from
+the game or other mods are reported as WARN. Games default to supported_games in mod.conf/modpack.conf,
+else minetest,mineclonia,mineclone2.
+EOF
+}
+
+# Supported games declared by the package, mapped to our reference game ids.
+declared_games() {
+	local conf value
+	for conf in mod.conf modpack.conf; do
+		[[ -f "$1/$conf" ]] || continue
+		value="$(awk -F'=' '/^[[:space:]]*supported_games[[:space:]]*=/ { print $2 }' "$1/$conf" | tr -d ' ')"
+		[[ -n "$value" && "$value" != "*" ]] && tr ',' '\n' <<<"$value" | sed 's/_game$//' && return 0
+	done
+	return 0
+}
+
+lint_step() { # lint_step <path>; returns non-zero on blocking problems
+	local path="$1" failed=0
+	if have luacheck; then
+		note "luacheck"
+		(cd "$path" && luacheck --no-color -q .) || failed=1
+	else
+		warn "luacheck not installed, skipping"
+	fi
+	if [[ -f "$path/.stylua.toml" || -f "$path/stylua.toml" ]]; then
+		if have stylua; then
+			note "stylua --check"
+			stylua --check "$path" >/dev/null || { warn "stylua: formatting differs (run: stylua $path)"; failed=1; }
+		fi
+	fi
+	note "ldg lint"
+	ldg lint "$path" --quick --strict || failed=1
+	return $failed
+}
+
+# run_case <path> <game> <engine> <runner> <timeout> <keep> -> appends a JSON line to $RESULTS
+run_case() {
+	local path="$1" game="$2" engine="$3" runner="$4" limit="$5" keep="$6"
+	local id folder gdir run started status="FAIL" reason="" code=0 uses_mtt=0
+	id="$(game_id "$game")"
+	folder="$(game_field "$game" 2)"
+	gdir="$(game_dir "$game")"
+	run="$(mktemp -d "${TMPDIR:-/tmp}/avanti-test.XXXXXX")"
+	mkdir -p "$run/mods" "$run/world" "$run/user"
+	started=$(date +%s)
+
+	record() {
+		# Errors that mention the mod under test (mod names, item prefixes, its folder) are
+		# ours; everything else comes from the game or other mods and only warrants a warning.
+		local log="$run/debug.txt" pattern="$TARGET_PATTERN"
+		grep -E 'ERROR\[|ModError|Runtime error|stack traceback' "$log" 2>/dev/null |
+			sed -E 's/^[0-9: -]+//' | awk '!seen[$0]++' >"$run/errors.all" || true
+		grep -E "$pattern" "$run/errors.all" >"$run/errors.ours" || true
+		grep -vE "$pattern" "$run/errors.all" >"$run/errors.other" || true
+		grep -E 'ndeclared global|deprecated' "$log" 2>/dev/null | sed -E 's/^[0-9: -]+//' |
+			awk '!seen[$0]++' | grep -E "$pattern" >"$run/warnings.ours" || true
+		if [[ "$status" == PASS && -s "$run/errors.other" ]]; then
+			status="WARN"
+			reason="$(wc -l <"$run/errors.other" | tr -d ' ') error(s) from the game or other mods"
+		fi
+		jq -cn --arg game "$game" --arg engine "$engine" --arg runner "$runner" --arg status "$status" \
+			--arg reason "$reason" --arg log "$log" --argjson seconds "$(($(date +%s) - started))" \
+			--rawfile errors "$run/errors.ours" --rawfile other "$run/errors.other" \
+			--rawfile warnings "$run/warnings.ours" \
+			'def lines: split("\n") | map(select(length > 0)) | .[:15];
+			{game: $game, engine: $engine, runner: $runner, status: $status, reason: $reason,
+			 seconds: $seconds, errors: ($errors | lines), other_errors: ($other | lines),
+			 warnings: ($warnings | lines), log: $log}' >>"$RESULTS"
+		if [[ "$status" =~ ^(PASS|WARN|SKIP)$ && "$keep" -eq 0 ]]; then rm -rf "$run"; fi
+	}
+
+	if [[ -z "$gdir" ]]; then
+		reason="game not synced (avanti games sync $game)"
+		status="SKIP"
+		record
+		return 0
+	fi
+
+	# The package under test, in a folder named like the mod (CI checkouts may use any name).
+	rsync -a --exclude .git --exclude .github "$path/" "$run/mods/$PKG_FOLDER/" 2>/dev/null ||
+		cp -R "$path" "$run/mods/$PKG_FOLDER"
+	grep -qsE '^[[:space:]]*(optional_)?depends[[:space:]]*=.*\<mtt\>' "$path"/mod.conf "$path"/*/mod.conf && uses_mtt=1
+	local extra=()
+	[[ $uses_mtt -eq 1 ]] && extra=(--with mtt)
+
+	# Dependencies the game doesn't provide, resolved and fetched by ldg.
+	local install_json
+	if ! install_json="$(ldg install "$path" --game "$game" --dest "$run/mods" \
+		${extra[@]+"${extra[@]}"} --json 2>"$run/ldg.err")"; then
+		reason="dependencies can't be met in $game: $(jq -r '[.resolution.missing[]?.modname] | join(", ")' <<<"$install_json" 2>/dev/null || cat "$run/ldg.err")"
+		record
+		return 0
+	fi
+	cp -R "$AVANTI_LIB/avanti_smoke" "$run/mods/"
+
+	{
+		echo "gameid = $id"
+		echo "backend = sqlite3"
+		echo "player_backend = sqlite3"
+		echo "auth_backend = sqlite3"
+		echo "mod_storage_backend = sqlite3"
+		echo "load_mod_avanti_smoke = true"
+		jq -r '.enable[] | "load_mod_\(.) = true"' <<<"$install_json"
+	} >"$run/world/world.mt"
+	{
+		echo "random_mod_load_order = $([[ "${FIXED_ORDER:-0}" -eq 1 ]] && echo false || echo true)"
+		echo "server_announce = false"
+		echo "ipv6_server = false"
+		echo "bind_address = 127.0.0.1"
+		echo "debug_log_level = action"
+		echo "deprecated_lua_api_handling = log"
+		if [[ $uses_mtt -eq 1 ]]; then
+			echo "mtt_enable = true"
+			echo "mtt_filter = $(jq -r '[.enable[]] | join(",")' <<<"$install_json")"
+		else
+			echo "avanti_smoke = true"
+		fi
+	} >"$run/test.conf"
+
+	local port=$((30000 + RANDOM % 5000))
+	set +e
+	if [[ "$runner" == native ]]; then
+		local bin
+		bin="$(luanti_bin)" || die "no native Luanti binary (brew install --cask luanti, or --runner docker)"
+		LUANTI_GAME_PATH="$(dirname "$gdir")" MINETEST_GAME_PATH="$(dirname "$gdir")" \
+			LUANTI_MOD_PATH="$run/mods" MINETEST_MOD_PATH="$run/mods" \
+			LUANTI_USER_PATH="$run/user" MINETEST_USER_PATH="$run/user" \
+			run_with_timeout "$limit" "$bin" --server --world "$run/world" --gameid "$id" \
+			--config "$run/test.conf" --logfile "$run/debug.txt" --port "$port" >"$run/stdout.txt" 2>&1
+		code=$?
+	else
+		docker_ready || die "docker daemon not running (colima start / Docker Desktop), or use --runner native"
+		# shellcheck disable=SC2016  # $@ expands inside the container's sh
+		run_with_timeout "$limit" docker run --rm --user "$(id -u):$(id -g)" \
+			-v "$run:/avanti" -v "$gdir:/games/$folder:ro" \
+			-e LUANTI_GAME_PATH=/games -e MINETEST_GAME_PATH=/games \
+			-e LUANTI_MOD_PATH=/avanti/mods -e MINETEST_MOD_PATH=/avanti/mods \
+			-e LUANTI_USER_PATH=/avanti/user -e MINETEST_USER_PATH=/avanti/user -e HOME=/avanti/user \
+			--entrypoint sh "$(engine_image "$engine")" \
+			-c 'exec "$(command -v luantiserver || command -v minetestserver)" "$@"' sh \
+			--world /avanti/world --gameid "$id" --config /avanti/test.conf \
+			--logfile /avanti/debug.txt --port 30000 >"$run/stdout.txt" 2>&1
+		code=$?
+	fi
+	set -e
+
+	local ours
+	ours="$(grep -E 'ERROR\[|ModError|Runtime error' "$run/debug.txt" 2>/dev/null |
+		grep -cE "$TARGET_PATTERN" || true)"
+	if [[ $code -eq 124 || $code -eq 142 ]]; then
+		reason="timed out after ${limit}s"
+	elif [[ $code -ne 0 ]]; then
+		reason="server exited with code $code"
+		[[ "${ours:-0}" -eq 0 ]] && reason="$reason; no error names your mod (game load-order issue? retry or use --fixed-order)"
+	elif [[ "${ours:-0}" -gt 0 ]]; then
+		reason="errors from your mod in the log"
+	elif [[ $uses_mtt -eq 0 ]] && ! grep -q '\[avanti_smoke\] OK' "$run/debug.txt" 2>/dev/null; then
+		reason="smoke test did not complete"
+	else
+		status="PASS"
+	fi
+	record
+}
+
+cmd_test() {
+	local path="." runner="auto" limit=180 keep=0 lint=1 json=0
+	local games=() engines=()
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+		--game) games+=("$2"); shift 2 ;;
+		--engine) engines+=("$2"); shift 2 ;;
+		--runner) runner="$2"; shift 2 ;;
+		--timeout) limit="$2"; shift 2 ;;
+		--keep) keep=1; shift ;;
+		--no-lint) lint=0; shift ;;
+		--fixed-order) FIXED_ORDER=1; shift ;;
+		--json) json=1; shift ;;
+		-h | --help) test_usage; return 0 ;;
+		-*) die "unknown option $1" ;;
+		*) path="$1"; shift ;;
+		esac
+	done
+	path="$(cd "$path" && pwd)"
+	have ldg || die "ldg is required: uv tool install git+https://github.com/culmat/luanti-depgraph"
+	have jq || die "jq is required"
+	TARGET_MODS="$(ldg deps "$path" --json | jq -r '.provides | join(" ")')"
+	[[ -n "$TARGET_MODS" ]] || die "no mods found in $path"
+	PKG_FOLDER="$(basename "$path")"
+	if [[ -f "$path/init.lua" && "$TARGET_MODS" != *" "* ]]; then PKG_FOLDER="$TARGET_MODS"; fi
+	# Matches log lines that name one of the target's mods (also as item prefix) or its folder.
+	TARGET_PATTERN="(^|[^a-z0-9_])(${TARGET_MODS// /|})([^a-z0-9_]|\$)|/mods/$PKG_FOLDER/"
+
+	if [[ ${#games[@]} -eq 0 ]]; then
+		while IFS= read -r g; do games+=("$g"); done < <(declared_games "$path")
+		[[ ${#games[@]} -gt 0 ]] || games=(minetest mineclonia mineclone2)
+	fi
+	if [[ "$runner" == auto ]]; then
+		if [[ ${#engines[@]} -gt 0 ]] && docker_ready; then runner=docker
+		elif luanti_bin >/dev/null; then runner=native
+		elif docker_ready; then runner=docker
+		else die "need a native Luanti (brew install --cask luanti) or a running docker daemon"
+		fi
+	fi
+	if [[ ${#engines[@]} -eq 0 ]]; then
+		if [[ "$runner" == native ]]; then engines=("$(luanti_version "$(luanti_bin)")")
+		else engines=("$AVANTI_ENGINE_VERSION")
+		fi
+	fi
+
+	local lint_ok=1
+	if [[ $lint -eq 1 ]]; then
+		lint_step "$path" || lint_ok=0
+	fi
+
+	RESULTS="$(mktemp)"
+	local g e
+	for g in "${games[@]}"; do
+		for e in "${engines[@]}"; do
+			note "running $(basename "$path") in $g on $e ($runner)"
+			run_case "$path" "$g" "$e" "$runner" "$limit" "$keep"
+		done
+	done
+
+	local failed
+	failed="$(jq -s '[.[] | select(.status == "FAIL")] | length' "$RESULTS")"
+	if [[ $json -eq 1 ]]; then
+		jq -s --argjson lint "$lint_ok" '{lint_ok: ($lint == 1), results: .}' "$RESULTS"
+	else
+		printf '\n%-12s %-9s %-7s %-6s %s\n' GAME ENGINE RUNNER STATUS DETAIL
+		jq -r '[.game, .engine, .runner, .status, (.reason + (if .seconds > 0 then " (\(.seconds)s)" else "" end))] | @tsv' "$RESULTS" |
+			while IFS=$'\t' read -r g e r s d; do
+				local color="$C_GREEN"
+				[[ "$s" == FAIL ]] && color="$C_RED"
+				[[ "$s" == SKIP || "$s" == WARN ]] && color="$C_YELLOW"
+				printf '%-12s %-9s %-7s %s%-6s%s %s\n' "$g" "$e" "$r" "$color" "$s" "$C_OFF" "$d"
+			done
+		jq -r 'select(.status == "FAIL" or .status == "WARN") | "\n\(.game) \(.engine): \(.log)",
+			(.errors[] | "  " + .), (.warnings[] | "  warning: " + .),
+			(.other_errors[:5][] | "  other: " + .)' "$RESULTS"
+		[[ $lint_ok -eq 1 ]] || printf '\n%slint failed%s (see above)\n' "$C_RED" "$C_OFF"
+	fi
+	rm -f "$RESULTS"
+	[[ "$failed" -eq 0 && $lint_ok -eq 1 ]]
+}
+
+# ---------------------------------------------------------------- serve
+
+cmd_serve() {
+	local path="." game="" port=30000
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+		--game) game="$2"; shift 2 ;;
+		--port) port="$2"; shift 2 ;;
+		-*) die "unknown option $1" ;;
+		*) path="$1"; shift ;;
+		esac
+	done
+	[[ -n "$game" ]] || die "avanti serve [PATH] --game ID"
+	path="$(cd "$path" && pwd)"
+	local gdir id world mods bin
+	gdir="$(game_dir "$game")"
+	[[ -n "$gdir" ]] || die "game $game not synced: avanti games sync $game"
+	id="$(game_id "$game")"
+	bin="$(luanti_bin)" || die "no native Luanti binary"
+	world="$AVANTI_HOME/worlds/$(basename "$path")-$id"
+	mods="$world/.avanti-mods"
+	mkdir -p "$mods"
+	rsync -a --delete --exclude .git "$path/" "$mods/$(basename "$path")/"
+	local install_json
+	install_json="$(ldg install "$path" --game "$game" --dest "$mods" --json)" ||
+		die "dependencies can't be met in $game (ldg resolve $path --game $game)"
+	if [[ ! -f "$world/world.mt" ]]; then
+		echo "gameid = $id" >"$world/world.mt"
+		echo "backend = sqlite3" >>"$world/world.mt"
+	fi
+	sed -i.bak '/^load_mod_/d' "$world/world.mt" && rm -f "$world/world.mt.bak"
+	jq -r '.enable[] | "load_mod_\(.) = true"' <<<"$install_json" >>"$world/world.mt"
+	info "serving $(basename "$path") in $game on 127.0.0.1:$port; world: $world"
+	info "connect with the Luanti client (Join Game -> 127.0.0.1 : $port); Ctrl-C to stop"
+	LUANTI_GAME_PATH="$(dirname "$gdir")" MINETEST_GAME_PATH="$(dirname "$gdir")" \
+		LUANTI_MOD_PATH="$mods" MINETEST_MOD_PATH="$mods" \
+		exec "$bin" --server --world "$world" --gameid "$id" --port "$port"
+}
+
+cmd_env() {
+	cat <<EOF
+AVANTI_HOME=$AVANTI_HOME
+AVANTI_CORPUS=$AVANTI_CORPUS
+AVANTI_GAMES=$AVANTI_GAMES
+AVANTI_ENGINE_VERSION=$AVANTI_ENGINE_VERSION
+AVANTI_PLUGIN_ROOT=$AVANTI_PLUGIN_ROOT
+LDG_HOME=$LDG_HOME
+LDG_CORPUS=$LDG_CORPUS
+EOF
+}
+
+main() {
+	local cmd="${1:-help}"
+	shift || true
+	case "$cmd" in
+	doctor) cmd_doctor "$@" ;;
+	games) cmd_games "$@" ;;
+	corpus) [[ "${1:-}" == sync ]] && shift; cmd_corpus "$@" ;;
+	new) cmd_new "$@" ;;
+	test) cmd_test "$@" ;;
+	serve) cmd_serve "$@" ;;
+	index) cmd_index "$@" ;;
+	env) cmd_env ;;
+	help | -h | --help) usage ;;
+	*) usage; exit 1 ;;
+	esac
+}
+
+main "$@"

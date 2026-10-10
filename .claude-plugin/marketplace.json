@@ -1,0 +1,19 @@
+{
+  "name": "avanti-luanti",
+  "owner": {
+    "name": "Matthias Cullmann",
+    "url": "https://github.com/culmat"
+  },
+  "metadata": {
+    "description": "Claude Code tooling for building, testing and publishing Luanti (Minetest) mods."
+  },
+  "plugins": [
+    {
+      "name": "avanti",
+      "source": "./plugins/avanti",
+      "description": "Luanti mod factory: modding and dependency skills, /avanti commands, headless multi-game testing, a dependency-graph MCP server and semantic search over the Luanti ecosystem.",
+      "category": "development",
+      "tags": ["luanti", "minetest", "lua", "gamedev", "modding"]
+    }
+  ]
+}

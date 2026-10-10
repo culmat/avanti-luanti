@@ -1,0 +1,41 @@
+{{title}}
+Copyright (C) {{year}} {{owner}} and contributors
+
+== Code ==
+
+SPDX-License-Identifier: {{license}}
+
+<<CODE_LICENSE_TEXT>>
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+<<END_CODE_LICENSE_TEXT>>
+
+== Media (textures, sounds, models) ==
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+Unless listed otherwise below, media is licensed under Creative Commons
+Attribution-ShareAlike 4.0 International: https://creativecommons.org/licenses/by-sa/4.0/
+
+Attribution (one line per file or group: file(s), author, license, source):
+(none yet)
+
+== AI-generated assets ==
+
+ContentDB requires AI-generated content to be disclosed (.cdb.json "ai_disclosure").
+List every asset that was generated or substantially modified by AI, with the tool used:
+(none yet)

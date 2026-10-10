@@ -1,0 +1,11 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  avanti:
+    # Lint (luacheck, ldg lint) and headless tests in each game x engine.
+    uses: culmat/avanti-luanti/.github/workflows/mod-ci.yml@v1
+    with:
+      games: "{{games}}"

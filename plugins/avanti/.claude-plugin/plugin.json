@@ -1,0 +1,13 @@
+{
+  "name": "avanti",
+  "version": "0.1.0",
+  "description": "Luanti mod factory: modding and dependency skills, /avanti commands, headless multi-game testing, a dependency-graph MCP server (luanti-depgraph) and semantic search (zvec-grep).",
+  "author": {
+    "name": "Matthias Cullmann",
+    "url": "https://github.com/culmat"
+  },
+  "homepage": "https://github.com/culmat/avanti-luanti",
+  "repository": "https://github.com/culmat/avanti-luanti",
+  "license": "MIT",
+  "keywords": ["luanti", "minetest", "lua", "contentdb", "modding", "dependencies"]
+}
