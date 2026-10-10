@@ -6,6 +6,8 @@ AVANTI_CORPUS="$AVANTI_HOME/corpus"
 AVANTI_GAMES="$AVANTI_CORPUS/games"
 AVANTI_ENGINE_SRC="$AVANTI_CORPUS/engine"
 AVANTI_VENDOR="$AVANTI_CORPUS/vendor"
+# Text-only mirror of the corpus without .git, indexed by zvec-grep (which skips nested git repos).
+AVANTI_SEARCH="$AVANTI_HOME/search"
 AVANTI_ENGINE_VERSION="${AVANTI_ENGINE_VERSION:-5.17.0}"
 AVANTI_PLUGIN_ROOT="$(cd "$AVANTI_LIB/.." && pwd)"
 # ldg keeps its database in its own home (LDG_HOME, default ~/.local/share/luanti-depgraph),

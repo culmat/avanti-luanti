@@ -16,11 +16,12 @@ Usage:
   avanti games sync [ID...]          Clone or update reference games (default: all)
   avanti games list                  Show reference games and whether they are synced
   avanti corpus sync [--top N]       Engine docs + games + vendored references + top-N package
-                                     sources into \$AVANTI_HOME/corpus, then index it
+                                     sources into \$AVANTI_HOME/corpus, then index them for search
   avanti new NAME [options]          Scaffold a mod from the template (see avanti new --help)
   avanti test [PATH] [options]       Lint, then run PATH headlessly in each game x engine
   avanti serve [PATH] --game ID      Run a local server with the mod for play-testing
-  avanti index [PATH]                (Re)build the zvec-grep semantic index (default: corpus)
+  avanti index [PATH]                (Re)build the zvec-grep index (default: the corpus, via a
+                                     text-only mirror in \$AVANTI_HOME/search)
   avanti env                         Print the environment avanti uses
 
 Environment: AVANTI_HOME=$AVANTI_HOME (ldg uses its own LDG_HOME)
@@ -96,8 +97,8 @@ cmd_doctor() {
 			row fail "dependency db" "missing: ldg update"
 		fi
 	fi
-	if [[ -d "$AVANTI_CORPUS/.zvec-grep" ]]; then
-		row ok "search index" "$AVANTI_CORPUS"
+	if [[ -d "$AVANTI_SEARCH/.zvec-grep" ]]; then
+		row ok "search index" "$AVANTI_SEARCH"
 	else
 		row warn "search index" "missing: avanti index"
 	fi
@@ -184,12 +185,28 @@ cmd_corpus() {
 		note "fetching sources of the top $top packages (ldg build --git-top $top)"
 		LDG_CORPUS="$AVANTI_PACKAGES" ldg build --git-top "$top"
 	fi
-	cmd_index "$AVANTI_CORPUS"
+	cmd_index
+}
+
+# zvec-grep silently skips git repositories nested below the index root, and the corpus is
+# a set of git checkouts, so search runs on a text-only mirror without .git.
+search_mirror() {
+	note "mirroring text sources of $AVANTI_CORPUS into $AVANTI_SEARCH"
+	mkdir -p "$AVANTI_SEARCH"
+	rsync -a --delete --prune-empty-dirs \
+		--exclude='.git/' --exclude='.zvec-grep/' --exclude='.ldg-release' \
+		--include='*/' --include='*.lua' --include='*.md' --include='*.txt' --include='*.conf' \
+		--include='*.tr' --include='*.po' --include='*.json' --include='*.yml' --include='*.luacheckrc' \
+		--exclude='*' "$AVANTI_CORPUS/" "$AVANTI_SEARCH/"
 }
 
 cmd_index() {
-	local path="${1:-$AVANTI_CORPUS}"
+	local path="${1:-}"
 	have zg || die "zvec-grep is not installed: npm i -g @zvec/zvec-grep"
+	if [[ -z "$path" ]]; then
+		search_mirror
+		path="$AVANTI_SEARCH"
+	fi
 	note "indexing $path (local embeddings; the first run downloads the model)"
 	if [[ -d "$path/.zvec-grep" ]]; then
 		zg index "$path" # incremental; reuses the stored embedding model
@@ -593,6 +610,7 @@ AVANTI_GAMES=$AVANTI_GAMES
 AVANTI_ENGINE_VERSION=$AVANTI_ENGINE_VERSION
 AVANTI_PLUGIN_ROOT=$AVANTI_PLUGIN_ROOT
 AVANTI_PACKAGES=$AVANTI_PACKAGES
+AVANTI_SEARCH=$AVANTI_SEARCH
 LDG_HOME=${LDG_HOME:-(ldg default)}
 EOF
 }

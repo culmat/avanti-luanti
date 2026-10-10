@@ -20,6 +20,7 @@ Things avanti-luanti found or needs that belong upstream, not in a fork. Per [ai
 | 💡 | [lunarmodules/luacheck](https://github.com/lunarmodules/luacheck) | A release that ships the `luanti` std (only on main since 2024) |
 | 💡 | [luanti-org/flint](https://github.com/luanti-org/flint) | An "undeclared dependency" lint rule like LDG001–LDG003; ask maintainers about AI policy first |
 | 💡 | [luanti-org/luma](https://github.com/luanti-org/luma) | Offer the resolver rules or the nightly snapshot for dependency-aware installs |
+| 📝 | [zvec-ai/zvec-grep](https://github.com/zvec-ai/zvec-grep) | 0.2.2 silently indexes 0 files from git repositories nested below the index root (a root that is itself a repo works; `--no-ignore` and `--hidden` don't help). A hint in the output or an option would help multi-repo workspaces. avanti works around it with a text-only mirror. |
 | 💡 | [Voxrame/luanti-ide-helper](https://github.com/Voxrame/luanti-ide-helper) | Report annotation gaps found while building mods |
 
 ## Games and mods

@@ -83,7 +83,7 @@ ldg compat . && ldg lint .
 | Hook | PostToolUse | luacheck/stylua after Lua edits, `ldg lint` after `mod.conf` edits (feedback only) |
 | Hook | SessionStart | In Luanti projects: what's available and what's missing |
 | MCP | `luanti-depgraph` | `ldg mcp` (read-only dependency graph tools) |
-| MCP | `zvec-grep` | Local semantic search over `~/.avanti/corpus`: engine docs and builtin, games, top packages, modding book |
+| MCP | `zvec-grep` | Local semantic search over `~/.avanti/search`, a text-only mirror of the corpus: engine docs and builtin, games, top packages, modding book |
 
 Install it without `setup.sh`:
 

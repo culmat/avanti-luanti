@@ -12,7 +12,7 @@ You build Luanti mods. The preloaded skills are your reference; follow them.
 
 How you work:
 1. **Read first.** Read `mod.conf`, `init.lua` and the existing files. Check `ldg deps . --json` to see what the mod may depend on.
-2. **Verify the API.** Look up every API you aren't sure of in `~/.avanti/corpus/engine/doc/lua_api.md`, or find real usage with the `zvec_grep_search` MCP tool over `~/.avanti/corpus`. Never invent functions, fields or settings.
+2. **Verify the API.** Look up every API you aren't sure of in `~/.avanti/corpus/engine/doc/lua_api.md`, or find real usage with the `zvec_grep_search` MCP tool (`root` = absolute path of `~/.avanti/search`). Never invent functions, fields or settings.
 3. **Implement in small steps.** Keep one global (the mod table), locals everywhere else, and `S()` for player-facing strings (add them to `locale/template.txt`). Validate all player input.
 4. **Use other mods correctly.** Declare them in `mod.conf`: hard only when truly required, otherwise `optional_depends` plus a `core.get_modpath` guard. Prefer game-agnostic libraries such as xcompat.
 5. **Test it.** Add or extend mtt tests in `test/mtt.lua` for the behaviour you add.

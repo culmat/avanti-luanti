@@ -13,7 +13,7 @@ The Luanti API is large and has changed over the years (`minetest.*` became `cor
 1. **The engine's own reference**, for the engine version avanti tests against:
    - `$AVANTI_HOME/corpus/engine/doc/lua_api.md` (`AVANTI_HOME` defaults to `~/.avanti`). Grep for the exact name, e.g. `grep -n "get_mod_data_path" ~/.avanti/corpus/engine/doc/lua_api.md`.
    - Settings are in `.../engine/builtin/settingtypes.txt`.
-2. **Real usage in the ecosystem:** the `zvec_grep_search` MCP tool with `root` = the absolute path of `~/.avanti/corpus`. It covers the engine docs and builtin, Minetest Game, Mineclonia, VoxeLibre, the top ContentDB packages, the modding book and mtt. Ask in natural language ("how do mods register a stair node in mineclonia"), then read the hits.
+2. **Real usage in the ecosystem:** the `zvec_grep_search` MCP tool with `root` = the absolute path of `~/.avanti/search` (a text-only mirror of `~/.avanti/corpus`; the same relative paths exist in both). It covers the engine docs and builtin, Minetest Game, Mineclonia, VoxeLibre, the top ContentDB packages, the modding book and mtt. Ask in natural language ("how do mods register a stair node in mineclonia"), then read the hits.
 3. **The Luanti Modding Book:** `~/.avanti/corpus/vendor/modding_book/_en/` for idioms and explanations.
 4. **LuaLS annotations:** `~/.avanti/corpus/vendor/luanti-ide-helper` for signatures and types.
 
