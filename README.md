@@ -2,13 +2,13 @@
 
 **An agent-based factory for [Luanti](https://www.luanti.org) (formerly Minetest) mods, built in the open to give back to the Luanti community.**
 
-avanti-luanti is developer tooling. It is **not a Luanti mod** and doesn't run inside the game. It runs on your machine and in CI, and helps you (and Claude Code agents) build, test and publish Luanti mods that work across games.
+avanti-luanti is developer tooling. It is **not a Luanti mod** and doesn't run inside the game. It runs on your machine and in CI, and helps you and your coding agent build, test and publish Luanti mods that work across games. The agent integration ships as a Claude Code plugin today; its skills and agents are plain Markdown, so other agents (opencode, Codex, ...) can use them too.
 
 ```
  YOUR MACHINE / CI                                         LUANTI ENGINE (headless, native or Docker)
  ┌────────────────────────────────────────────────┐       ┌──────────────────────────────────┐
- │ Claude Code + Claude Code plugin "avanti"       │       │ game: Minetest Game / Mineclonia │
- │   skills · /avanti:* commands · agents · hooks  ├──────▶│       / VoxeLibre / devtest      │
+ │ coding agent + avanti skills, agents, hooks     │       │ game: Minetest Game / Mineclonia │
+ │   (Claude Code plugin today; AGENTS.md)         ├──────▶│       / VoxeLibre / devtest      │
  │ avanti CLI   scaffold · test matrix · serve     │ tests │ + your mod + resolved deps       │
  │ ldg          dependency graph (luanti-depgraph) │       └──────────────────────────────────┘
  │ zg           semantic search over Luanti code   │                 │ publish (human-approved)
@@ -18,8 +18,8 @@ avanti-luanti is developer tooling. It is **not a Luanti mod** and doesn't run i
 
 | Repo | What |
 |---|---|
-| **culmat/avanti-luanti** (this repo) | `setup.sh`, the `avanti` CLI, the **Claude Code plugin** `avanti` (skills, commands, agents, hooks, MCP config), the mod template, reusable mod CI, docs |
-| [culmat/luanti-depgraph](https://github.com/culmat/luanti-depgraph) | `ldg`: dependency graph of all ContentDB content. CLI, MCP server and SQLite/Cypher data. Useful without Claude. |
+| **culmat/avanti-luanti** (this repo) | `setup.sh`, the `avanti` CLI, the agent integration `avanti` (skills, commands, agents, hooks, MCP config; packaged as a **Claude Code plugin**), the mod template, reusable mod CI, docs |
+| [culmat/luanti-depgraph](https://github.com/culmat/luanti-depgraph) | `ldg`: dependency graph of all ContentDB content. CLI, MCP server and SQLite/Cypher data. Useful without any agent. |
 | `culmat/<modname>` | One repo per mod produced by the factory (ContentDB releases one package per repo) |
 
 ## Why
@@ -48,7 +48,7 @@ avanti doctor
 
 **macOS:** needs Homebrew; uses the Luanti app for native tests. **Linux:** install `luantiserver`, or use Docker. **Disk:** about 1 GB under `~/.avanti` (games, corpus, index). `./setup.sh --minimal` skips the package corpus and the index.
 
-Then, in Claude Code:
+Then, with a coding agent (here Claude Code with the plugin's commands):
 
 ```
 /avanti:new-mod glowing_mushrooms Mushrooms that glow and spread in caves
@@ -57,7 +57,7 @@ Then, in Claude Code:
 /avanti:release 0.1.0
 ```
 
-Or without Claude:
+Or without an agent:
 
 ```sh
 avanti new glowing_mushrooms --description "Mushrooms that glow and spread in caves."
@@ -65,7 +65,11 @@ cd glowing_mushrooms && avanti test
 ldg compat . && ldg lint .
 ```
 
-## What's in the Claude Code plugin
+## Agent integration
+
+Packaged as a Claude Code plugin today. Skills, commands and agents are Markdown files in
+`plugins/avanti/` and the MCP servers and hooks call the same CLIs, so other coding agents can use
+them by reading [AGENTS.md](AGENTS.md) and the skill files; other packagings are welcome.
 
 | Kind | Name | Purpose |
 |---|---|---|
