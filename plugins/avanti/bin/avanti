@@ -22,7 +22,10 @@ Usage:
   avanti serve [PATH] --game ID      Run a local server with the mod for play-testing
   avanti index [PATH]                (Re)build the zvec-grep index (default: the corpus, via a
                                      text-only mirror in \$AVANTI_HOME/search)
-  avanti env                         Print the environment avanti uses
+  avanti cdb status [PATH|AUTHOR/NAME]   ContentDB state, latest release, game support (read-only)
+  avanti cdb release REF [PATH]      Create a ContentDB release from a pushed tag and wait for the
+                                     import (needs CONTENTDB_TOKEN; not needed with a webhook)
+  avanti env                        Print the environment avanti uses
 
 Environment: AVANTI_HOME=$AVANTI_HOME (ldg uses its own LDG_HOME)
 EOF
@@ -117,6 +120,11 @@ cmd_doctor() {
 		row ok "LuaLS annotations" "$AVANTI_VENDOR/luanti-ide-helper"
 	else
 		row warn "LuaLS annotations" "missing: avanti corpus sync"
+	fi
+	if [[ -n "${CONTENTDB_TOKEN:+set}" ]]; then
+		row ok "CONTENTDB_TOKEN" "set"
+	elif [[ $quiet -eq 0 ]]; then
+		note "      CONTENTDB_TOKEN        not set (only needed for avanti cdb release without a webhook)"
 	fi
 	if [[ $quiet -eq 1 && $problems -gt 0 ]]; then
 		info "avanti doctor: $problems problem(s); run ./setup.sh or the hints above."
@@ -634,6 +642,197 @@ cmd_serve() {
 		exec "$bin" --server --world "$world" --gameid "$id" --port "$port"
 }
 
+# ---------------------------------------------------------------- contentdb
+
+cdb_usage() {
+	cat <<'EOF'
+Usage: avanti cdb status [PATH|AUTHOR/NAME] [--json]
+       avanti cdb release REF [PATH|AUTHOR/NAME] [--title TITLE] [--notes-file FILE] [--timeout SECONDS]
+       avanti cdb whoami
+
+status   Package state on ContentDB, latest release, game support and maintainers. With a PATH
+         (default .) it also checks that the latest release matches a local git tag. Read-only.
+release  Create a release from the git ref REF (a pushed tag such as v1.2.0) and wait until
+         ContentDB has imported it. Needs CONTENTDB_TOKEN. Not needed with a release webhook.
+whoami   Check CONTENTDB_TOKEN; prints the user name only.
+
+The package is AUTHOR/NAME, or NAME from PATH's mod.conf/modpack.conf/game.conf with AUTHOR
+from AVANTI_CONTENTDB_USER (else from the token).
+EOF
+}
+
+# Name declared in a package's .conf, else the folder name.
+package_name() {
+	local conf value
+	for conf in mod.conf modpack.conf game.conf; do
+		[[ -f "$1/$conf" ]] || continue
+		value="$(awk -F'=' '/^[[:space:]]*name[[:space:]]*=/ { gsub(/[[:space:]]/, "", $2); print $2; exit }' "$1/$conf")"
+		[[ -n "$value" ]] && echo "$value" && return 0
+	done
+	basename "$1"
+}
+
+cdb_whoami() { CDB_AUTH=1 cdb_get /api/whoami/ | jq -r '.username // empty'; }
+
+# cdb_target <PATH|AUTHOR/NAME>: sets CDB_PKG (author/name) and CDB_PATH (local dir or empty).
+cdb_target() {
+	local arg="$1" author="${AVANTI_CONTENTDB_USER:-}"
+	CDB_PATH=""
+	if [[ "$arg" == */* && ! -d "$arg" ]]; then
+		CDB_PKG="$arg"
+		return 0
+	fi
+	[[ -d "$arg" ]] || die "no such directory: $arg"
+	CDB_PATH="$(cd "$arg" && pwd)"
+	if [[ -z "$author" && -n "${CONTENTDB_TOKEN:+set}" ]]; then author="$(cdb_whoami)" || true; fi
+	[[ -n "$author" ]] || die "unknown ContentDB author: set AVANTI_CONTENTDB_USER or pass AUTHOR/NAME"
+	CDB_PKG="$author/$(package_name "$CDB_PATH")"
+}
+
+cdb_status() {
+	local target="." json=0 package releases
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+		--json) json=1; shift ;;
+		-h | --help) cdb_usage; return 0 ;;
+		-*) die "unknown option $1" ;;
+		*) target="$1"; shift ;;
+		esac
+	done
+	cdb_target "$target"
+	if ! package="$(cdb_get "/api/packages/$CDB_PKG/" 2>/dev/null)"; then
+		if [[ "$(jq -r '.code // empty' <<<"$package" 2>/dev/null)" == 404 ]]; then
+			if [[ $json -eq 1 ]]; then
+				jq -n --arg pkg "$CDB_PKG" '{package: $pkg, exists: false}'
+			else
+				info "$CDB_PKG is not on ContentDB yet. The first release is made on the website (see the contentdb-publishing skill)."
+			fi
+			return 0
+		fi
+		die "ContentDB request failed for $CDB_PKG: $(jq -r '.description // empty' <<<"$package" 2>/dev/null)"
+	fi
+	releases="$(cdb_get "/api/packages/$CDB_PKG/releases/")" || die "ContentDB request failed for $CDB_PKG releases"
+
+	# The local tag for the latest release: its name or title, with or without a leading v.
+	local latest_name latest_commit tag="" tag_commit="" candidate
+	latest_name="$(jq -r '.[0].name // empty' <<<"$releases")"
+	latest_commit="$(jq -r '.[0].commit // empty' <<<"$releases")"
+	if [[ -n "$CDB_PATH" && -n "$latest_name" ]] && git -C "$CDB_PATH" rev-parse --git-dir >/dev/null 2>&1; then
+		for candidate in "$latest_name" "v$latest_name" "${latest_name#v}" \
+			"$(jq -r '.[0].title' <<<"$releases")"; do
+			if tag_commit="$(git -C "$CDB_PATH" rev-parse -q --verify "refs/tags/$candidate^{commit}" 2>/dev/null)"; then
+				tag="$candidate"
+				break
+			fi
+		done
+	fi
+
+	if [[ $json -eq 1 ]]; then
+		jq -n --argjson p "$package" --argjson r "$releases" --arg tag "$tag" --arg tag_commit "$tag_commit" \
+			--arg url "$AVANTI_CONTENTDB_URL/packages/$CDB_PKG/" \
+			'{package: "\($p.author)/\($p.name)", exists: true, url: $url, state: $p.state, type: $p.type,
+			  maintainers: $p.maintainers, supports_all_games: $p.supports_all_games,
+			  game_support: [$p.game_support[] | {game: "\(.game.author)/\(.game.name)", supports, confidence}],
+			  releases: ($r | length), latest_release: ($r[0] // null | if . then del(.url) else . end),
+			  local_tag: (if $tag == "" then null else {name: $tag, commit: $tag_commit} end)}'
+		return 0
+	fi
+
+	local tag_line="no matching local tag"
+	if [[ -z "$CDB_PATH" ]]; then
+		tag_line=""
+	elif [[ -n "$tag" && -z "$latest_commit" ]]; then
+		tag_line="local tag $tag"
+	elif [[ -n "$tag" && "$tag_commit" == "$latest_commit" ]]; then
+		tag_line="${C_GREEN}matches local tag $tag${C_OFF}"
+	elif [[ -n "$tag" ]]; then
+		tag_line="${C_YELLOW}local tag $tag is at ${tag_commit:0:7}${C_OFF}"
+	fi
+	jq -r --argjson r "$releases" --arg url "$AVANTI_CONTENTDB_URL/packages/$CDB_PKG/" --arg tag_line "$tag_line" '
+		def games: if .supports_all_games then "all games"
+			elif (.game_support | length) == 0 then "none recorded"
+			else [.game_support[] | "\(.game.name)\(if .supports then "" else " (unsupported)" end)"] | join(", ") end;
+		"\(.author)/\(.name)  \(.state)  (\(.type))",
+		"  latest release  " + (if ($r | length) == 0 then "none"
+			else ($r[0] | "\(.title)  \(.release_date[:10])  \((.commit // "")[:7])") + (if $tag_line == "" then "" else "  " + $tag_line end) end),
+		"  releases        \($r | length)",
+		"  games           \(games)",
+		"  maintainers     \(.maintainers | join(", "))",
+		"  url             \($url)"' <<<"$package"
+}
+
+cdb_release() {
+	local ref="" target="." title="" notes="" limit=300 body response task release_id
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+		--title) title="$2"; shift 2 ;;
+		--notes-file) notes="$2"; shift 2 ;;
+		--timeout) limit="$2"; shift 2 ;;
+		-h | --help) cdb_usage; return 0 ;;
+		-*) die "unknown option $1" ;;
+		*) if [[ -z "$ref" ]]; then ref="$1"; else target="$1"; fi; shift ;;
+		esac
+	done
+	[[ -n "$ref" ]] || die "avanti cdb release REF [PATH|AUTHOR/NAME]: REF is the pushed git tag, e.g. v1.2.0"
+	[[ -z "$notes" || -f "$notes" ]] || die "no such file: $notes"
+	[[ -n "${CONTENTDB_TOKEN:+set}" ]] ||
+		die "CONTENTDB_TOKEN is not set: create a token scoped to the package at $AVANTI_CONTENTDB_URL/user/tokens/"
+	cdb_target "$target"
+	body="$(jq -n --arg ref "$ref" --arg name "${ref#v}" --arg title "${title:-${ref#v}}" \
+		--rawfile notes "${notes:-/dev/null}" \
+		'{method: "git", ref: $ref, name: $name, title: $title} + (if $notes == "" then {} else {release_notes: $notes} end)')"
+	note "creating release ${ref#v} of $CDB_PKG from $ref"
+	if ! response="$(CDB_AUTH=1 cdb_request POST "/api/packages/$CDB_PKG/releases/new/" "$body")"; then
+		die "ContentDB refused the release: $(jq -r '.error // .description // .' <<<"$response" 2>/dev/null)"
+	fi
+	task="$(jq -r '.task // empty' <<<"$response")"
+	release_id="$(jq -r '.release.id // empty' <<<"$response")"
+	[[ -n "$task" ]] || die "unexpected response from ContentDB: $response"
+
+	# ContentDB imports the release in a background task; wait for it to finish.
+	local started status="" task_json
+	started=$(date +%s)
+	while (($(date +%s) - started < limit)); do
+		task_json="$(cdb_get "$task")" || task_json='{}'
+		status="$(jq -r '.status // empty' <<<"$task_json")"
+		case "$status" in
+		SUCCESS)
+			info "${C_GREEN}released${C_OFF} ${ref#v} (release $release_id)"
+			echo "$AVANTI_CONTENTDB_URL/packages/$CDB_PKG/"
+			return 0
+			;;
+		FAILURE | REVOKED)
+			info "${C_RED}import failed${C_OFF}: $(jq -r '.error // "no details"' <<<"$task_json")"
+			info "details and the package thread: $AVANTI_CONTENTDB_URL/packages/$CDB_PKG/"
+			return 1
+			;;
+		esac
+		sleep 3
+	done
+	warn "the import is still ${status:-pending} after ${limit}s; check $AVANTI_CONTENTDB_URL$task"
+	return 2
+}
+
+cmd_cdb() {
+	local sub="${1:-}"
+	shift || true
+	have jq || die "jq is required"
+	case "$sub" in
+	status) cdb_status "$@" ;;
+	release) cdb_release "$@" ;;
+	whoami)
+		local user
+		[[ -n "${CONTENTDB_TOKEN:+set}" ]] ||
+			die "CONTENTDB_TOKEN is not set: create a token at $AVANTI_CONTENTDB_URL/user/tokens/"
+		user="$(cdb_whoami)" || die "ContentDB request failed"
+		[[ -n "$user" ]] || die "CONTENTDB_TOKEN is not valid"
+		echo "$user"
+		;;
+	-h | --help | help | "") cdb_usage ;;
+	*) cdb_usage; exit 1 ;;
+	esac
+}
+
 cmd_env() {
 	cat <<EOF
 AVANTI_HOME=$AVANTI_HOME
@@ -658,6 +857,7 @@ main() {
 	test) cmd_test "$@" ;;
 	serve) cmd_serve "$@" ;;
 	index) cmd_index "$@" ;;
+	cdb) cmd_cdb "$@" ;;
 	env) cmd_env ;;
 	help | -h | --help) usage ;;
 	*) usage; exit 1 ;;

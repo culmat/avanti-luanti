@@ -108,3 +108,26 @@ run_with_timeout() {
 }
 
 json_escape() { python3 -c 'import json, sys; print(json.dumps(sys.stdin.read().rstrip("\n")))'; }
+
+# ContentDB API. Identify ourselves and stay polite: no crawling, bulk data comes from ldg.
+AVANTI_CONTENTDB_URL="${AVANTI_CONTENTDB_URL:-https://content.luanti.org}"
+CDB_USER_AGENT="avanti (+https://github.com/culmat/avanti-luanti)"
+
+# cdb_request <method> <path> [json-body]: prints the response body, fails on HTTP errors.
+# With CDB_AUTH=1 the token goes in through a curl config on stdin (a heredoc), so it shows up
+# neither in the process list nor in xtrace output.
+cdb_request() {
+	local method="$1" path="$2" body="${3:-}"
+	local args=(-sS --fail-with-body -X "$method" -A "$CDB_USER_AGENT" -H 'Accept: application/json')
+	[[ -n "$body" ]] && args+=(-H 'Content-Type: application/json' --data-binary "$body")
+	if [[ "${CDB_AUTH:-0}" -eq 1 ]]; then
+		[[ -n "${CONTENTDB_TOKEN:+set}" ]] ||
+			die "CONTENTDB_TOKEN is not set: create a token scoped to the package at $AVANTI_CONTENTDB_URL/user/tokens/"
+		curl "${args[@]}" -K - "$AVANTI_CONTENTDB_URL$path" <<EOF
+header = "Authorization: Bearer $CONTENTDB_TOKEN"
+EOF
+	else
+		curl "${args[@]}" "$AVANTI_CONTENTDB_URL$path"
+	fi
+}
+cdb_get() { cdb_request GET "$1"; }

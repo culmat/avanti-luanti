@@ -25,7 +25,8 @@ Check each item and show a ✅/❌ table. Stop on any ❌ and offer fixes.
 
 1. `git tag -a v<version> -m "<version>"`, then `git push origin main --tags`.
 2. **First release?** Hand over the website steps from the contentdb-publishing skill: create the package, add screenshots, submit for approval, set up the webhook. Don't automate them.
-3. **Later releases:** if the webhook is set up, the tag is enough. Otherwise, with `CONTENTDB_TOKEN` set by the user, create the release through the API call in the contentdb-publishing skill. Never print or store the token.
-4. Optional: a forum post. Give the user the facts (title format `[Mod] Title [modname]`, links, supported games, license); they write the post themselves.
+3. **Later releases:** if the webhook is set up, the tag is enough. Otherwise, with `CONTENTDB_TOKEN` set by the user, run `avanti cdb release v<version> --notes-file <approved notes>`. It waits for ContentDB's import and prints the reason if it fails. Never print or store the token.
+4. **Confirm:** `avanti cdb status` until the latest release matches the tag (give a webhook import a minute or two). Report the package state, the game support ContentDB computed, and any failure, which usually means a game-support conflict between `supported_games` and the dependencies.
+5. Optional: a forum post. Give the user the facts (title format `[Mod] Title [modname]`, links, supported games, license); they write the post themselves.
 
 Finish by reporting the release URL, or what's left for the user to do.

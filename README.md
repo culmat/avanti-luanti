@@ -104,6 +104,8 @@ avanti new NAME [...]              scaffold from plugins/avanti/templates/mod
 avanti test [PATH] [...]           lint + headless run per game × engine (native or Docker)
 avanti serve [PATH] --game ID      local server for play-testing with the Luanti client
 avanti index [PATH]                zvec-grep index
+avanti cdb status [PATH|A/NAME]    ContentDB state, latest release vs local tag, game support
+avanti cdb release REF [PATH]      create a ContentDB release from a pushed tag (CONTENTDB_TOKEN)
 ```
 
 **Test statuses:**

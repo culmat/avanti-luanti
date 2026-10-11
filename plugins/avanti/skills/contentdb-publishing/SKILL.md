@@ -53,12 +53,12 @@ The schema is at `https://content.luanti.org/api/cdb_schema/`. Fields avanti use
 ## Releases
 
 - Prefer **git tags plus a webhook**. Every pushed tag becomes a release, which keeps ContentDB and git in sync.
-- To use the API instead, create a token at `/user/tokens/` scoped to the one package, and keep it in the `CONTENTDB_TOKEN` environment variable (never in the repo):
+- To use the API instead, the user creates a token at `/user/tokens/` scoped to the one package and keeps it in the `CONTENTDB_TOKEN` environment variable (never in the repo). Then:
   ```sh
-  curl -X POST "https://content.luanti.org/api/packages/$AUTHOR/$NAME/releases/new/" \
-    -H "Authorization: Bearer $CONTENTDB_TOKEN" -H "Content-Type: application/json" \
-    -d '{"method": "git", "title": "1.2.0", "ref": "v1.2.0", "release_notes": "…"}'
+  avanti cdb release v1.2.0 --notes-file NOTES.md   # creates the release from the pushed tag, waits for the import
   ```
+  It exits 0 once ContentDB has imported the release, 1 if the import failed (the reason is printed, e.g. a game-support conflict), and 2 if it's still running after `--timeout`. Without avanti, the call is `POST /api/packages/<author>/<name>/releases/new/` with `{"method": "git", "ref": "v1.2.0", "title": "1.2.0"}`.
+- `avanti cdb status [PATH|AUTHOR/NAME]` is the read-only check, with no token needed: package state (`WIP`, `READY_FOR_REVIEW`, `APPROVED`, ...), latest release and whether it matches a local tag, game support and maintainers (`--json` for the raw data). Run it before a release, and after one to confirm it went through (webhook imports are asynchronous too). The author comes from `AVANTI_CONTENTDB_USER`.
 - Release notes should be human-checked and short: what changed for players and server owners.
 - `.gitattributes` `export-ignore` keeps `.github/`, `.luacheckrc` and similar out of the release zip.
 

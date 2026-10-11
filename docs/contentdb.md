@@ -35,7 +35,20 @@ Reference: https://content.luanti.org/help/api/. These are the endpoints luanti-
 | `GET /api/packages/<a>/<n>/releases/` | Releases with `min_minetest_version` / `max_minetest_version` and `commit` |
 | `GET /api/packages/<a>/<n>/dependencies/` | Each dependency with all candidate packages |
 | `GET /api/cdb_schema/` | JSON Schema of `.cdb.json` |
-| `POST /api/packages/<a>/<n>/releases/new/` | Create a release (token; `{"method":"git","ref":…}`) |
+| `POST /api/packages/<a>/<n>/releases/new/` | Create a release (token; `{"method":"git","ref":…}`). Returns `{"task": "/tasks/<id>/", "release": {…}}` |
+| `GET /tasks/<id>/` | Import task status (`PENDING`/`STARTED`/`SUCCESS`/`FAILURE` plus `error`). JSON only with `Accept: application/json` and no `text/html`, otherwise HTML |
+| `GET /api/whoami/` | `{is_authenticated, username}` for the token |
+
+### Clients
+
+Checked 2026-10-11: there's **no official CLI, client library, MCP server or GitHub Action** for ContentDB.
+- [luctl](https://pkg.go.dev/github.com/brylie/luctl) (Go, MIT) wraps the API for server owners. It searches and installs packages but can't publish.
+- Read access for avanti comes from luanti-depgraph (snapshot + MCP tools).
+- `avanti cdb` covers the rest, using curl:
+  - `status`: package state, latest release vs local tag, game support;
+  - `release`: create a git release and poll its task;
+  - `whoami`.
+- Screenshots, metadata `PUT` and zip releases aren't wrapped; the website or webhook covers them.
 
 Etiquette:
 - Rate limits aren't documented, and ContentDB was DDoSed in April 2026, after which unidentified crawlers were blocked. **Always send a descriptive User-Agent, stay slow, cache, and prefer bulk endpoints.**
