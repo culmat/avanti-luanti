@@ -421,8 +421,15 @@ run_case() {
 	rsync -a --exclude .git --exclude .github "$path/" "$run/mods/$PKG_FOLDER/" 2>/dev/null ||
 		cp -R "$path" "$run/mods/$PKG_FOLDER"
 	grep -qsE '^[[:space:]]*(optional_)?depends[[:space:]]*=.*\<mtt\>' "$path"/mod.conf "$path"/*/mod.conf && uses_mtt=1
+	# Test helpers a mod declares (optionally) are installed too: mtt runs the tests,
+	# fakelib provides fake players for them.
+	local helpers="" helper
+	for helper in mtt fakelib; do
+		grep -qsE "^[[:space:]]*(optional_)?depends[[:space:]]*=.*\<$helper\>" "$path"/mod.conf "$path"/*/mod.conf &&
+			helpers="${helpers:+$helpers,}$helper"
+	done
 	local extra=()
-	[[ $uses_mtt -eq 1 ]] && extra=(--with mtt)
+	[[ -n "$helpers" ]] && extra=(--with "$helpers")
 
 	# Dependencies the game doesn't provide, resolved and fetched by ldg.
 	local install_json
