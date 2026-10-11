@@ -16,7 +16,7 @@ Source: https://content.luanti.org/policy_and_guidance/
 |---|---|
 | Name | The technical name must be free (policy 3.1, "right to a name"). Check with `ldg name-check NAME`. Forks or drop-in replacements may reuse a name only if they really are replacements (3.2). New mods introduced by a game need the game's prefix (3.3). |
 | License | A `LICENSE` file with an FSF/OSI-approved code license (MIT, LGPL-2.1-or-later, …) and a free media license (CC-BY-SA-4.0, CC0, …). No CC "NC" or "ND" licenses, and "public domain" alone isn't valid. The template's `LICENSE` has code, media and AI-assets sections; keep the attributions complete. |
-| Quality | Useful content, English title and short description, at least one *non-misleading* screenshot (uploaded on ContentDB; 3:2 at 300×200 minimum). WIP must be labelled (`dev_state`). |
+| Quality | Useful content, English title and short description, at least one *non-misleading* screenshot (`avanti screenshot` renders real in-game ones, see below) (uploaded on ContentDB; 3:2 at 300×200 minimum). WIP must be labelled (`dev_state`). |
 | Security | No obfuscated code, no ads, no asking users to disable mod security. Insecure or HTTP APIs need a clear reason. |
 | AI disclosure | `.cdb.json` `ai_disclosure` is mandatory and must be true, and significant AI-generated assets must be credited in `LICENSE`. Low-effort "slop" may be rejected. |
 
@@ -67,3 +67,14 @@ The schema is at `https://content.luanti.org/api/cdb_schema/`. Fields avanti use
 - The forum topic goes in "WIP Mods", later "Mod Releases", titled `[Mod] Title [modname]`. The human posts it in their own words.
 - Respond to issues. Upstream fixes beat forks; ContentDB policy asks you to try contributing before forking.
 - Generative-AI attitudes in the community range from accepting to hostile. Be transparent, keep quality high, and never present AI output as human-written.
+
+## Screenshots
+
+`avanti screenshot [PATH] [--game ID]...` (macOS, the Luanti app) renders the mod in the real client and
+captures only the Luanti window: `screenshots/<game>.png` at 1500x1000 (3:2) for ContentDB, plus
+`screenshot.png` (600x400, the in-game content manager) if the mod has none. It uses the mod's own
+`tools/showcase` mod (a scene builder run on join; see culmat/glowshroom) or a generic one that lines
+up the mod's nodes on a daylit platform (tool-only mods are shown in hand). The client needs a real
+desktop session: an agent's sandboxed shell can't open windows, so the command must run unsandboxed
+or in the user's terminal. Keep `screenshots/` and `tools/` out of releases with `.gitattributes`
+`export-ignore`, and always look at the images before uploading them.

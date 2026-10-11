@@ -20,6 +20,7 @@ Usage:
   avanti new NAME [options]          Scaffold a mod from the template (see avanti new --help)
   avanti test [PATH] [options]       Lint, then run PATH headlessly in each game x engine
   avanti serve [PATH] --game ID      Run a local server with the mod for play-testing
+  avanti screenshot [PATH]           In-game screenshots for ContentDB (macOS, Luanti app)
   avanti index [PATH]                (Re)build the zvec-grep index (default: the corpus, via a
                                      text-only mirror in \$AVANTI_HOME/search)
   avanti cdb status [PATH|AUTHOR/NAME]   ContentDB state, latest release, game support (read-only)
@@ -833,6 +834,155 @@ cmd_cdb() {
 	esac
 }
 
+# ---------------------------------------------------------------- screenshot
+
+screenshot_usage() {
+	cat <<'USAGE'
+Usage: avanti screenshot [PATH] [--game ID]... [--out DIR] [--size WxH] [--wait SECONDS]
+
+Renders the mod in the real Luanti client and captures only the Luanti window (macOS, needs
+the Luanti app and Xcode command line tools for swiftc). The scene is the mod's own
+tools/showcase mod if it has one, otherwise a generic showcase that lines up every node the mod
+registers on a daylit platform. Writes DIR/<game>.png (default PATH/screenshots, 1500x1000 = 3:2
+as ContentDB wants) and PATH/screenshot.png (600x400) if the mod has none yet. Games default to
+supported_games in mod.conf, else minetest.
+The client opens a visible window for about half a minute per game.
+USAGE
+}
+
+# helper_bin <name>: compile lib/screenshot/<name>.swift once into $AVANTI_HOME/bin.
+helper_bin() {
+	local src="$AVANTI_LIB/screenshot/$1.swift" bin="$AVANTI_HOME/bin/$1"
+	if [[ ! -x "$bin" || "$src" -nt "$bin" ]]; then
+		have swiftc || die "swiftc is needed (xcode-select --install)"
+		mkdir -p "$AVANTI_HOME/bin"
+		swiftc -O "$src" -o "$bin" >/dev/null || die "could not compile $src"
+	fi
+	echo "$bin"
+}
+
+screenshot_case() { # screenshot_case <path> <game> <out.png> <width> <height> <wait>
+	local path="$1" game="$2" out="$3" width="$4" height="$5" wait="$6"
+	local id gdir run bin winid cropbottom wid pid showcase=""
+	id="$(game_id "$game")"
+	gdir="$(game_dir "$game")"
+	[[ -n "$gdir" ]] || { warn "game $game not synced (avanti games sync $game), skipped"; return 0; }
+	bin="$(luanti_bin)" || die "no Luanti app found (brew install --cask luanti)"
+	winid="$(helper_bin winid)"
+	cropbottom="$(helper_bin cropbottom)"
+	run="$(mktemp -d "${TMPDIR:-/tmp}/avanti-shot.XXXXXX")"
+	mkdir -p "$run/mods" "$run/world" "$run/user"
+	rsync -a --exclude .git --exclude .github --exclude screenshots --exclude tools "$path/" "$run/mods/$PKG_FOLDER/"
+	ldg install "$path" --game "$game" --dest "$run/mods" --json >"$run/install.json" ||
+		die "dependencies can't be met in $game (ldg resolve $path --game $game)"
+	{
+		echo "gameid = $id"
+		echo "backend = sqlite3"
+		echo "creative_mode = true"
+		echo "enable_damage = false"
+		jq -r '.enable[] | "load_mod_\(.) = true"' "$run/install.json"
+	} >"$run/world/world.mt"
+	if [[ -f "$path/tools/showcase/mod.conf" ]]; then
+		showcase="$(awk -F'=' '/^[[:space:]]*name[[:space:]]*=/ { gsub(/[[:space:]]/, "", $2); print $2 }' "$path/tools/showcase/mod.conf")"
+		cp -R "$path/tools/showcase" "$run/mods/$showcase"
+	else
+		showcase="avanti_showcase"
+		cp -R "$AVANTI_LIB/avanti_showcase" "$run/mods/"
+	fi
+	echo "load_mod_$showcase = true" >>"$run/world/world.mt"
+	{
+		echo "screen_w = $width"
+		echo "screen_h = $height"
+		echo "fullscreen = false"
+		echo "enable_minimap = false"
+		echo "show_debug = false"
+		echo "viewing_range = 80"
+		echo "creative_mode = true"
+		echo "enable_damage = false"
+		echo "name = singleplayer"
+		echo "smooth_lighting = true"
+		echo "node_highlighting = none"
+		echo "crosshair_alpha = 0"
+		echo "avanti_showcase = true"
+		echo "avanti_showcase_mods = ${TARGET_MODS// /,}"
+	} >"$run/client.conf"
+	LUANTI_GAME_PATH="$(dirname "$gdir")" MINETEST_GAME_PATH="$(dirname "$gdir")" \
+		LUANTI_MOD_PATH="$run/mods" LUANTI_USER_PATH="$run/user" \
+		"$bin" --go --world "$run/world" --gameid "$id" --config "$run/client.conf" \
+		--logfile "$run/client.log" >"$run/client.out" 2>&1 &
+	pid=$!
+	wid=""
+	for _ in $(seq 1 60); do
+		sleep 1
+		wid="$("$winid" luanti || true)"
+		[[ -n "$wid" ]] && break
+		kill -0 "$pid" 2>/dev/null || break
+	done
+	if [[ -z "$wid" ]]; then
+		kill "$pid" 2>/dev/null || true
+		grep -q "Could not create window" "$run/client.log" 2>/dev/null &&
+			die "Luanti couldn't open a window. Run avanti screenshot from a normal terminal (sandboxed shells, e.g. an agent's, have no GUI access)."
+		die "no Luanti window appeared; see $run/client.log"
+	fi
+	# The generic showcase logs when its scene is ready; custom ones get the full wait.
+	for _ in $(seq 1 "$wait"); do
+		if grep -q "\[avanti_showcase\] READY" "$run/client.log" 2>/dev/null; then
+			sleep 4
+			break
+		fi
+		sleep 1
+	done
+	screencapture -x -o -l"$wid" "$out"
+	kill "$pid" 2>/dev/null || true
+	wait "$pid" 2>/dev/null || true
+	# Drop the title bar and the rounded window corners, keep the aspect ratio, scale back.
+	local cw=$((width - 36))
+	local ch=$((cw * height / width))
+	"$cropbottom" "$out" "$out" "$cw" "$ch" 18
+	sips -z "$height" "$width" "$out" >/dev/null
+	rm -rf "$run"
+	info "${C_GREEN}wrote${C_OFF} $out"
+}
+
+cmd_screenshot() {
+	local path="." out="" size="1500x1000" wait=40 games=()
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+		--game) games+=("$2"); shift 2 ;;
+		--out) out="$2"; shift 2 ;;
+		--size) size="$2"; shift 2 ;;
+		--wait) wait="$2"; shift 2 ;;
+		-h | --help) screenshot_usage; return 0 ;;
+		-*) die "unknown option $1" ;;
+		*) path="$1"; shift ;;
+		esac
+	done
+	[[ "$(uname -s)" == Darwin ]] || die "avanti screenshot currently needs macOS (it drives the Luanti app and captures its window)"
+	path="$(cd "$path" && pwd)"
+	out="${out:-$path/screenshots}"
+	mkdir -p "$out"
+	TARGET_MODS="$(ldg deps "$path" --json | jq -r '.provides | join(" ")')"
+	[[ -n "$TARGET_MODS" ]] || die "no mods found in $path"
+	PKG_FOLDER="$(basename "$path")"
+	if [[ -f "$path/init.lua" && "$TARGET_MODS" != *" "* ]]; then PKG_FOLDER="$TARGET_MODS"; fi
+	if [[ ${#games[@]} -eq 0 ]]; then
+		while IFS= read -r g; do games+=("$g"); done < <(declared_games "$path")
+		[[ ${#games[@]} -gt 0 ]] || games=(minetest)
+	fi
+	local g file folder first=""
+	for g in "${games[@]}"; do
+		folder="$(game_field "$g" 2)"
+		file="$out/${folder:-$g}.png"
+		note "rendering $(basename "$path") in $g"
+		screenshot_case "$path" "$g" "$file" "${size%x*}" "${size#*x}" "$wait"
+		if [[ -z "$first" && -f "$file" ]]; then first="$file"; fi
+	done
+	if [[ -n "$first" && ! -f "$path/screenshot.png" ]]; then
+		sips -z 400 600 "$first" --out "$path/screenshot.png" >/dev/null
+		info "${C_GREEN}wrote${C_OFF} $path/screenshot.png (600x400, shown by the in-game content manager)"
+	fi
+}
+
 cmd_env() {
 	cat <<EOF
 AVANTI_HOME=$AVANTI_HOME
@@ -856,6 +1006,7 @@ main() {
 	new) cmd_new "$@" ;;
 	test) cmd_test "$@" ;;
 	serve) cmd_serve "$@" ;;
+	screenshot) cmd_screenshot "$@" ;;
 	index) cmd_index "$@" ;;
 	cdb) cmd_cdb "$@" ;;
 	env) cmd_env ;;
