@@ -123,6 +123,7 @@ avanti cdb release REF [PATH]      create a ContentDB release from a pushed tag 
 | SKIP | Game not synced, or engine below the game's minimum |
 
 Mods made with the template get CI from [.github/workflows/mod-ci.yml](.github/workflows/mod-ci.yml): luacheck + `ldg lint`, then games × engines `5.10.0, 5.17.0` in the official server images.
+They also get GitOps releases from [.github/workflows/mod-release.yml](.github/workflows/mod-release.yml): push a tag `v1.2.0`, the tests run, a GitHub release is made and, after you approve the `contentdb` environment, ContentDB imports the tag (setup: `avanti secrets push OWNER/REPO`). Reference both workflows with `@v2`; `@v1` keeps working for older mods.
 
 ## Principles
 
@@ -138,6 +139,7 @@ setup.sh                         workstation bootstrap
 .claude-plugin/marketplace.json  marketplace "avanti-luanti" → plugins/avanti
 plugins/avanti/                  the Claude Code plugin (+ the avanti CLI in bin/, its lib/ and the mod template)
 .github/workflows/mod-ci.yml     reusable CI for mods; ci.yml tests this repo
+.github/workflows/mod-release.yml  reusable tag -> GitHub release -> ContentDB release
 docs/                            primer, ContentDB, AI policy, upstream backlog
 ```
 

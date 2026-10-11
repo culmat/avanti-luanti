@@ -1,0 +1,19 @@
+name: Release
+# Push a tag like v1.2.0: tests run, a GitHub release is made, and after you approve the "contentdb"
+# environment ContentDB imports the tag. One-time setup: avanti secrets setup && avanti secrets push {{owner}}/{{modname}}
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  ci:
+    uses: culmat/avanti-luanti/.github/workflows/mod-ci.yml@v2
+    with:
+      games: "{{games}}"
+  release:
+    needs: ci
+    uses: culmat/avanti-luanti/.github/workflows/mod-release.yml@v2
+    secrets: inherit

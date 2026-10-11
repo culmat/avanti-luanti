@@ -1,0 +1,91 @@
+# Reusable GitOps release for Luanti mods made with avanti-luanti (or any mod whose package is the
+# repository root, or a folder given as `path`). In the mod repo:
+#
+#   on:
+#     push:
+#       tags: ["v*"]
+#   permissions:
+#     contents: write
+#   jobs:
+#     ci:
+#       uses: culmat/avanti-luanti/.github/workflows/mod-ci.yml@v2
+#     release:
+#       needs: ci
+#       uses: culmat/avanti-luanti/.github/workflows/mod-release.yml@v2
+#       secrets: inherit
+#
+# A pushed tag becomes a GitHub release (with a zip) and, after a maintainer approves the deployment
+# environment (default "contentdb"), a ContentDB release imported from that tag. Set up once with
+# `avanti secrets setup && avanti secrets push OWNER/REPO` (needs admin rights on the repository and
+# a ContentDB token of the package's author). Without a token the ContentDB step is skipped.
+name: avanti mod release
+on:
+  workflow_call:
+    inputs:
+      path:
+        description: Path of the mod/modpack inside the repository (root for git imports)
+        type: string
+        default: .
+      environment:
+        description: Deployment environment that guards the ContentDB release
+        type: string
+        default: contentdb
+      author:
+        description: ContentDB author of the package (default the repository owner)
+        type: string
+        default: ""
+      avanti-ref:
+        description: Ref of culmat/avanti-luanti providing the avanti CLI
+        type: string
+        default: v2
+    secrets:
+      CONTENTDB_TOKEN:
+        required: false
+
+jobs:
+  github:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Zip of the package (export-ignore files left out)
+        env:
+          PKG_PATH: ${{ inputs.path }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          name="$(awk -F'=' '/^[[:space:]]*name[[:space:]]*=/ { gsub(/[[:space:]]/, "", $2); print $2; exit }' \
+            "$PKG_PATH"/mod.conf "$PKG_PATH"/modpack.conf "$PKG_PATH"/game.conf 2>/dev/null)"
+          name="${name:-${GITHUB_REPOSITORY#*/}}"
+          mkdir -p dist
+          sub="${PKG_PATH#./}"; sub="${sub%/}"
+          if [ -z "$sub" ] || [ "$sub" = . ]; then tree=HEAD; else tree="HEAD:$sub"; fi
+          git archive --format=zip --prefix="$name/" -o "dist/$name-${TAG#v}.zip" "$tree"
+      - uses: softprops/action-gh-release@v3
+        with:
+          files: dist/*.zip
+          generate_release_notes: true
+
+  contentdb:
+    needs: github
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: culmat/avanti-luanti
+          ref: ${{ inputs.avanti-ref }}
+          path: .avanti
+      - name: ContentDB release from the tag
+        env:
+          CONTENTDB_TOKEN: ${{ secrets.CONTENTDB_TOKEN }}
+          AVANTI_CONTENTDB_USER: ${{ inputs.author || github.repository_owner }}
+          PKG_PATH: ${{ inputs.path }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [ -z "$CONTENTDB_TOKEN" ]; then
+            echo "::notice::No CONTENTDB_TOKEN in environment '${{ inputs.environment }}': skipping ContentDB (avanti secrets push $GITHUB_REPOSITORY)"
+            exit 0
+          fi
+          .avanti/plugins/avanti/bin/avanti cdb release "$TAG" "$PKG_PATH" --title "${TAG#v}"

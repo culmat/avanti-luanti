@@ -2,7 +2,7 @@
 #
 #   jobs:
 #     avanti:
-#       uses: culmat/avanti-luanti/.github/workflows/mod-ci.yml@v1
+#       uses: culmat/avanti-luanti/.github/workflows/mod-ci.yml@v2
 #       with:
 #         games: minetest,mineclonia,mineclone2
 #
@@ -27,7 +27,7 @@ on:
       avanti-ref:
         description: Ref of culmat/avanti-luanti providing the avanti CLI
         type: string
-        default: v1
+        default: v2
       depgraph-source:
         description: Where to install luanti-depgraph (ldg) from
         type: string
