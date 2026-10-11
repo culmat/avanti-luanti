@@ -650,12 +650,15 @@ cdb_usage() {
 	cat <<'EOF'
 Usage: avanti cdb status [PATH|AUTHOR/NAME] [--json]
        avanti cdb release REF [PATH|AUTHOR/NAME] [--title TITLE] [--notes-file FILE] [--timeout SECONDS]
+       avanti cdb release VERSION [PATH|AUTHOR/NAME] --zip FILE [--notes-file FILE] [--timeout SECONDS]
        avanti cdb whoami
 
 status   Package state on ContentDB, latest release, game support and maintainers. With a PATH
          (default .) it also checks that the latest release matches a local git tag. Read-only.
 release  Create a release from the git ref REF (a pushed tag such as v1.2.0) and wait until
          ContentDB has imported it. Needs CONTENTDB_TOKEN. Not needed with a release webhook.
+         With --zip, upload FILE instead (for packages inside a monorepo, which ContentDB's git
+         import can't reach); VERSION becomes the release title.
 whoami   Check CONTENTDB_TOKEN; prints the user name only.
 
 The package is AUTHOR/NAME, or NAME from PATH's mod.conf/modpack.conf/game.conf with AUTHOR
@@ -764,10 +767,11 @@ cdb_status() {
 }
 
 cdb_release() {
-	local ref="" target="." title="" notes="" limit=300 body response task release_id
+	local ref="" target="." title="" notes="" limit=300 zip="" body response task release_id
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 		--title) title="$2"; shift 2 ;;
+		--zip) zip="$2"; shift 2 ;;
 		--notes-file) notes="$2"; shift 2 ;;
 		--timeout) limit="$2"; shift 2 ;;
 		-h | --help) cdb_usage; return 0 ;;
@@ -780,15 +784,28 @@ cdb_release() {
 	[[ -n "${CONTENTDB_TOKEN:+set}" ]] ||
 		die "CONTENTDB_TOKEN is not set: create a token scoped to the package at $AVANTI_CONTENTDB_URL/user/tokens/"
 	cdb_target "$target"
-	body="$(jq -n --arg ref "$ref" --arg name "${ref#v}" --arg title "${title:-${ref#v}}" \
-		--rawfile notes "${notes:-/dev/null}" \
-		'{method: "git", ref: $ref, name: $name, title: $title} + (if $notes == "" then {} else {release_notes: $notes} end)')"
-	note "creating release ${ref#v} of $CDB_PKG from $ref"
-	if ! response="$(CDB_AUTH=1 cdb_request POST "/api/packages/$CDB_PKG/releases/new/" "$body")"; then
-		die "ContentDB refused the release: $(jq -r '.error // .description // .' <<<"$response" 2>/dev/null)"
+	if [[ -n "$zip" ]]; then
+		[[ -f "$zip" ]] || die "no such file: $zip"
+		note "uploading $(basename "$zip") as release ${title:-${ref#v}} of $CDB_PKG"
+		if ! response="$(cdb_upload "/api/packages/$CDB_PKG/releases/new/" "$zip" "${title:-${ref#v}}" "$notes")"; then
+			die "ContentDB refused the release: $(jq -r '.error // .description // .' <<<"$response" 2>/dev/null)"
+		fi
+	else
+		body="$(jq -n --arg ref "$ref" --arg name "${ref#v}" --arg title "${title:-${ref#v}}" \
+			--rawfile notes "${notes:-/dev/null}" \
+			'{method: "git", ref: $ref, name: $name, title: $title} + (if $notes == "" then {} else {release_notes: $notes} end)')"
+		note "creating release ${ref#v} of $CDB_PKG from $ref"
+		if ! response="$(CDB_AUTH=1 cdb_request POST "/api/packages/$CDB_PKG/releases/new/" "$body")"; then
+			die "ContentDB refused the release: $(jq -r '.error // .description // .' <<<"$response" 2>/dev/null)"
+		fi
 	fi
 	task="$(jq -r '.task // empty' <<<"$response")"
 	release_id="$(jq -r '.release.id // empty' <<<"$response")"
+	if [[ -z "$task" && -n "$zip" && "$(jq -r '.success // empty' <<<"$response")" == true ]]; then
+		info "${C_GREEN}released${C_OFF} ${title:-${ref#v}} (release ${release_id:-?})"
+		echo "$AVANTI_CONTENTDB_URL/packages/$CDB_PKG/"
+		return 0
+	fi
 	[[ -n "$task" ]] || die "unexpected response from ContentDB: $response"
 
 	# ContentDB imports the release in a background task; wait for it to finish.

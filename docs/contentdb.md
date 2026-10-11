@@ -48,7 +48,8 @@ Checked 2026-10-11: there's **no official CLI, client library, MCP server or Git
   - `status`: package state, latest release vs local tag, game support;
   - `release`: create a git release and poll its task;
   - `whoami`.
-- Screenshots, metadata `PUT` and zip releases aren't wrapped; the website or webhook covers them.
+- Zip releases: `avanti cdb release VERSION PATH --zip FILE` uploads a zip (multipart `title`, `file`, `release_notes`), for packages in a monorepo subfolder that git import can't reach.
+- Screenshots and metadata `PUT` aren't wrapped; the website covers them.
 
 Etiquette:
 - Rate limits aren't documented, and ContentDB was DDoSed in April 2026, after which unidentified crawlers were blocked. **Always send a descriptive User-Agent, stay slow, cache, and prefer bulk endpoints.**

@@ -58,6 +58,11 @@ The schema is at `https://content.luanti.org/api/cdb_schema/`. Fields avanti use
   avanti cdb release v1.2.0 --notes-file NOTES.md   # creates the release from the pushed tag, waits for the import
   ```
   It exits 0 once ContentDB has imported the release, 1 if the import failed (the reason is printed, e.g. a game-support conflict), and 2 if it's still running after `--timeout`. Without avanti, the call is `POST /api/packages/<author>/<name>/releases/new/` with `{"method": "git", "ref": "v1.2.0", "title": "1.2.0"}`.
+- **Packages inside a monorepo** (a mod in a subfolder) can't use git releases or webhooks: ContentDB only imports a repository root (or a root holding exactly one folder). Upload a zip instead, with the package in one top-level folder and dev files left out:
+  ```sh
+  avanti cdb release 1.2.0 mods/my_pack --zip dist/my_pack-1.2.0.zip --notes-file NOTES.md
+  ```
+  This sends `title`, `file` and `release_notes` as a multipart form to the same endpoint and waits for the import like a git release.
 - `avanti cdb status [PATH|AUTHOR/NAME]` is the read-only check, with no token needed: package state (`WIP`, `READY_FOR_REVIEW`, `APPROVED`, ...), latest release and whether it matches a local tag, game support and maintainers (`--json` for the raw data). Run it before a release, and after one to confirm it went through (webhook imports are asynchronous too). The author comes from `AVANTI_CONTENTDB_USER`.
 - Release notes should be human-checked and short: what changed for players and server owners.
 - `.gitattributes` `export-ignore` keeps `.github/`, `.luacheckrc` and similar out of the release zip.

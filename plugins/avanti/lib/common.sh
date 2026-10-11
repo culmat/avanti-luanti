@@ -131,3 +131,17 @@ EOF
 	fi
 }
 cdb_get() { cdb_request GET "$1"; }
+
+# cdb_upload <path> <zip> <title> [notes-file]: create a release from a zip (multipart form) and print
+# the response body. The token goes in through a curl config on stdin, like cdb_request.
+cdb_upload() {
+	local path="$1" zip="$2" title="$3" notes="${4:-}"
+	local args=(-sS --fail-with-body -X POST -A "$CDB_USER_AGENT" -H 'Accept: application/json'
+		-F "title=$title" -F "file=@$zip;type=application/zip")
+	[[ -n "$notes" ]] && args+=(-F "release_notes=<$notes")
+	[[ -n "${CONTENTDB_TOKEN:+set}" ]] ||
+		die "CONTENTDB_TOKEN is not set: create a token scoped to the package at $AVANTI_CONTENTDB_URL/user/tokens/"
+	curl "${args[@]}" -K - "$AVANTI_CONTENTDB_URL$path" <<CURLCONFIG
+header = "Authorization: Bearer $CONTENTDB_TOKEN"
+CURLCONFIG
+}
