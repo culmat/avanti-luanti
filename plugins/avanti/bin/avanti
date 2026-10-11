@@ -839,7 +839,7 @@ cmd_cdb() {
 
 screenshot_usage() {
 	cat <<'USAGE'
-Usage: avanti screenshot [PATH] [--game ID]... [--shots FILE] [--out DIR] [--size WxH] [--seed SEED]
+Usage: avanti screenshot [PATH] [--game ID]... [--shots FILE] [--out DIR] [--size WxH] [--seed SEED] [--gif]
        avanti screenshot [PATH] --record --game ID [--shots FILE]
 
 Renders the mod in the real Luanti client and captures only the Luanti window (macOS, needs
@@ -855,8 +855,16 @@ DIR/<game>-<name>.png. Without a shot list there is one shot with the scene's ow
 written to DIR/<game>.png. The world seed is fixed (--seed, default "avanti") so recorded
 positions stay valid.
 
+Videos: a shot with "keys" (camera keyframes with t in seconds) or "orbit" (center, radius,
+height, turns) is rendered frame by frame along a smooth path and written to
+DIR/<game>-<name>.mp4 (H.264, --size, the shot's fps, default 30); --gif adds a 600 px GIF.
+Rendering is lockstep (move camera, wait for the frame, capture), so it runs slower than real
+time but every frame is exact.
+
 --record opens the game interactively in the same world: fly to a spot (K), set the time with
-/time, type /shot <name>; /shots lists them. Quitting merges them into the shot list.
+/time, type /shot <name> for a still or /key <video> [seconds] for each keyframe of a video
+(/preview <video> plays it, /unkey <video> drops the last key); /shots lists them. Quitting
+merges them into the shot list.
 
 DIR defaults to PATH/screenshots; images are 1500x1000 (3:2, as ContentDB wants), and
 PATH/screenshot.png (600x400) is created if the mod has none. Games default to
@@ -920,6 +928,7 @@ screenshot_world() {
 		if [[ "$mode" == replay ]]; then
 			echo "node_highlighting = none"
 			echo "crosshair_alpha = 0"
+			echo "dedicated_server_step = 0.02" # faster camera/capture handshake, ~10 video frames/s
 		fi
 	} >"$run/client.conf"
 }
@@ -956,14 +965,15 @@ screenshot_window() {
 	echo "$wid"
 }
 
-# screenshot_replay <path> <game> <out_dir> <shots> <seed> <width> <height> <timeout>
+# screenshot_replay <path> <game> <out_dir> <shots> <seed> <width> <height> <timeout> <gif:0|1>
 screenshot_replay() {
-	local path="$1" game="$2" out="$3" shots="$4" seed="$5" width="$6" height="$7" limit="$8"
-	local folder run wid cropbottom elapsed=0 done_shots=0 line idx name file
+	local path="$1" game="$2" out="$3" shots="$4" seed="$5" width="$6" height="$7" limit="$8" gif="$9"
+	local folder run wid cropbottom winvideo elapsed=0 done_shots=0 line idx name file gif_file dups
 	[[ -n "$(game_dir "$game")" ]] || { warn "game $game not synced (avanti games sync $game), skipped"; return 0; }
 	folder="$(game_field "$game" 2)"
 	folder="${folder:-$game}"
 	cropbottom="$(helper_bin cropbottom)"
+	winvideo="$(helper_bin winvideo)"
 	run="$(mktemp -d "${TMPDIR:-/tmp}/avanti-shot.XXXXXX")"
 	screenshot_world "$path" "$game" "$run" replay "$shots" "$seed" "$width" "$height"
 	screenshot_launch "$game" "$run"
@@ -971,9 +981,26 @@ screenshot_replay() {
 	local cw=$((width - 36))
 	local ch=$((cw * height / width))
 	while ((elapsed < limit)); do
-		line="$(grep -E "\[avanti_camera\] (READY|DONE)" "$run/client.log" 2>/dev/null | tail -1 || true)"
+		line="$(grep -E "\[avanti_camera\] (READY|VIDEO|DONE)" "$run/client.log" 2>/dev/null | tail -1 || true)"
 		if [[ "$line" == *DONE* ]]; then
 			break
+		elif [[ "$line" =~ VIDEO\ ([0-9]+)\ ([0-9]+)\ ([0-9]+)\ (.*)$ ]] && ((BASH_REMATCH[1] > done_shots)); then
+			idx="${BASH_REMATCH[1]}"
+			name="${BASH_REMATCH[4]}"
+			file="$out/$folder-$name.mp4"
+			gif_file=""
+			[[ "$gif" == 1 ]] && gif_file="$out/$folder-$name.gif"
+			note "recording $name: ${BASH_REMATCH[2]} frames at ${BASH_REMATCH[3]} fps"
+			if dups="$("$winvideo" "$wid" "$run/client.log" "$run/world/avanti_camera_frame_ack" "$idx" "$file" \
+				"$width" "$height" "$gif_file")"; then
+				info "${C_GREEN}wrote${C_OFF} $file${gif_file:+ and $gif_file}"
+				[[ -n "$dups" ]] && warn "$name: ${dups#duplicates } frame(s) look identical to the previous one (the camera may not have moved, or try a higher avanti_camera_frame_wait)"
+			else
+				warn "recording $name failed; see $run/client.log"
+				break
+			fi
+			done_shots="$idx"
+			continue
 		elif [[ "$line" =~ READY\ ([0-9]+)\ (.*)$ ]] && ((BASH_REMATCH[1] > done_shots)); then
 			idx="${BASH_REMATCH[1]}"
 			name="${BASH_REMATCH[2]}"
@@ -1024,7 +1051,7 @@ screenshot_record() {
 }
 
 cmd_screenshot() {
-	local path="." out="" size="1500x1000" seed="avanti" shots="" record=0 games=()
+	local path="." out="" size="1500x1000" seed="avanti" shots="" record=0 gif=0 games=()
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 		--game) games+=("$2"); shift 2 ;;
@@ -1033,6 +1060,7 @@ cmd_screenshot() {
 		--seed) seed="$2"; shift 2 ;;
 		--shots) shots="$2"; shift 2 ;;
 		--record) record=1; shift ;;
+		--gif) gif=1; shift ;;
 		-h | --help) screenshot_usage; return 0 ;;
 		-*) die "unknown option $1" ;;
 		*) path="$1"; shift ;;
@@ -1063,7 +1091,7 @@ cmd_screenshot() {
 	for g in "${games[@]}"; do
 		note "rendering $(basename "$path") in $g ($count shot(s))"
 		# timeout in half-second polls: startup plus ~20 s per shot
-		screenshot_replay "$path" "$g" "$out" "$shots" "$seed" "${size%x*}" "${size#*x}" $(((60 + 20 * count) * 2))
+		screenshot_replay "$path" "$g" "$out" "$shots" "$seed" "${size%x*}" "${size#*x}" $(((60 + 20 * count) * 2)) "$gif"
 	done
 	if [[ -n "$SHOT_FIRST" && ! -f "$path/screenshot.png" ]]; then
 		sips -z 400 600 "$SHOT_FIRST" --out "$path/screenshot.png" >/dev/null

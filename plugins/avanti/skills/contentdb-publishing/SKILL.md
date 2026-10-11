@@ -82,9 +82,17 @@ the in-game content manager) if the mod has none.
   start per game: `screenshots/<game>-<name>.png`. Without a list there is one shot with the scene's own
   camera (`screenshots/<game>.png`). The world seed is fixed (`--seed`, default `avanti`), so positions
   stay valid across runs.
+- **Videos:** a shot with `keys` (keyframes `{t, pos, yaw/pitch or look_at, time, fov}`, smooth spline,
+  `ease` `inout` or `linear`) or `orbit` (`center`, `radius`, `height`, `turns`, `start`; whole turns loop
+  seamlessly) plus `duration` and `fps` (default 30) is rendered frame by frame to
+  `screenshots/<game>-<name>.mp4` (H.264); `--gif` adds a 600 px GIF for READMEs. Rendering is lockstep,
+  about 7 frames per second of wall time, so every frame is exact. Times above 1 wrap, so `time` 0.8 → 1.2
+  runs through midnight. ContentDB has no video upload: `.cdb.json` `video_url` links a hosted video (schema checked 2026-10-11).
 - **Positioning the camera:** `avanti screenshot --record --game ID` opens the game in the same world.
-  The user flies to a spot (K), sets the time (`/time`) and types `/shot <name>`. Quitting merges the shots
-  into the list. You can also write `look_at` shots by hand from the scene's coordinates.
+  The user flies to a spot (K), sets the time (`/time`) and types `/shot <name>` for a still, or
+  `/key <video> [seconds]` at each keyframe of a video (`/preview <video>` plays the path, `/unkey <video>`
+  drops the last key). Quitting merges the shots into the list. You can also write `look_at` shots by hand
+  from the scene's coordinates.
 - The client needs a real desktop session. An agent's sandboxed shell can't open windows, so the command
   must run unsandboxed or in the user's terminal.
 - Keep `screenshots/` and `tools/` out of releases with `.gitattributes` `export-ignore`, and always look
