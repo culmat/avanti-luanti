@@ -83,5 +83,8 @@ core.register_on_joinplayer(function(player)
 		})
 		local holding = item and (", holding " .. item) or ""
 		core.log("action", "[avanti_showcase] READY " .. #nodes .. " node(s)" .. holding)
+		if avanti_camera then
+			avanti_camera.scene_ready()
+		end
 	end)
 end)

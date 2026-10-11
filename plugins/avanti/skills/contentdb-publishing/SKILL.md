@@ -71,10 +71,21 @@ The schema is at `https://content.luanti.org/api/cdb_schema/`. Fields avanti use
 ## Screenshots
 
 `avanti screenshot [PATH] [--game ID]...` (macOS, the Luanti app) renders the mod in the real client and
-captures only the Luanti window: `screenshots/<game>.png` at 1500x1000 (3:2) for ContentDB, plus
-`screenshot.png` (600x400, the in-game content manager) if the mod has none. It uses the mod's own
-`tools/showcase` mod (a scene builder run on join; see culmat/glowshroom) or a generic one that lines
-up the mod's nodes on a daylit platform (tool-only mods are shown in hand). The client needs a real
-desktop session: an agent's sandboxed shell can't open windows, so the command must run unsandboxed
-or in the user's terminal. Keep `screenshots/` and `tools/` out of releases with `.gitattributes`
-`export-ignore`, and always look at the images before uploading them.
+captures only the Luanti window: 1500x1000 (3:2) images for ContentDB, plus `screenshot.png` (600x400,
+the in-game content manager) if the mod has none.
+
+- **Scene:** the mod's own `tools/showcase` mod builds it on join and calls `avanti_camera.scene_ready()`
+  when done (see culmat/glowshroom). Without one, a generic showcase lines up the mod's nodes on a daylit
+  platform; tool-only mods are shown in hand.
+- **Shot list:** `screenshots/shots.json` holds camera positions (eye position, `yaw`/`pitch` in degrees
+  or a `look_at` point), `time` of day (0–1), `fov` and `settle` seconds. All shots are taken in one engine
+  start per game: `screenshots/<game>-<name>.png`. Without a list there is one shot with the scene's own
+  camera (`screenshots/<game>.png`). The world seed is fixed (`--seed`, default `avanti`), so positions
+  stay valid across runs.
+- **Positioning the camera:** `avanti screenshot --record --game ID` opens the game in the same world.
+  The user flies to a spot (K), sets the time (`/time`) and types `/shot <name>`. Quitting merges the shots
+  into the list. You can also write `look_at` shots by hand from the scene's coordinates.
+- The client needs a real desktop session. An agent's sandboxed shell can't open windows, so the command
+  must run unsandboxed or in the user's terminal.
+- Keep `screenshots/` and `tools/` out of releases with `.gitattributes` `export-ignore`, and always look
+  at the images before uploading them.
