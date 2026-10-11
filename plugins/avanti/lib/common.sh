@@ -145,3 +145,7 @@ cdb_upload() {
 header = "Authorization: Bearer $CONTENTDB_TOKEN"
 CURLCONFIG
 }
+
+# Accounts and tokens (avanti secrets); loads the secrets file into the environment.
+# shellcheck source=secrets.sh
+source "$(dirname "${BASH_SOURCE[0]}")/secrets.sh"

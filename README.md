@@ -44,6 +44,8 @@ git clone https://github.com/culmat/avanti-luanti && cd avanti-luanti
 avanti doctor
 ```
 
+**Accounts and tokens:** `./setup.sh --secrets` (or later `avanti secrets setup`) opens the sign-up and token pages of ContentDB, Sketchfab and api.data.gov and stores what you paste in `~/.config/avanti/secrets.env` (mode 600). `avanti secrets push OWNER/REPO` copies them into a repository's Actions secrets; the ContentDB token goes into a `contentdb` environment that asks for your approval before each release.
+
 **macOS:** needs Homebrew; uses the Luanti app for native tests. **Linux:** install `luantiserver`, or use Docker. **Disk:** about 1 GB under `~/.avanti` (games, corpus, index). `./setup.sh --minimal` skips the package corpus and the index.
 
 Then, in Claude Code:

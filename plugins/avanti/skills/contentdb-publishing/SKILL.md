@@ -53,7 +53,7 @@ The schema is at `https://content.luanti.org/api/cdb_schema/`. Fields avanti use
 ## Releases
 
 - Prefer **git tags plus a webhook**. Every pushed tag becomes a release, which keeps ContentDB and git in sync.
-- To use the API instead, the user creates a token at `/user/tokens/` scoped to the one package and keeps it in the `CONTENTDB_TOKEN` environment variable (never in the repo). Then:
+- To use the API instead, the user creates a token at `/user/tokens/` scoped to the one package and keeps it in the `CONTENTDB_TOKEN` environment variable (never in the repo); `avanti secrets setup` stores it in `~/.config/avanti/secrets.env` and `avanti secrets push OWNER/REPO` puts it into a `contentdb` deployment environment with required approval. A release workflow releasing several packages needs a token that is not scoped to one package. Then:
   ```sh
   avanti cdb release v1.2.0 --notes-file NOTES.md   # creates the release from the pushed tag, waits for the import
   ```
@@ -82,7 +82,7 @@ the in-game content manager) if the mod has none.
 - **Scene:** the mod's own `tools/showcase` mod builds it on join and calls `avanti_camera.scene_ready()`
   when done (see culmat/glowshroom). Without one, a generic showcase lines up the mod's nodes on a daylit
   platform; tool-only mods are shown in hand.
-- **Shot list:** `screenshots/shots.json` holds camera positions (eye position, `yaw`/`pitch` in degrees
+- **Shot list:** `screenshots/shots.json` (top-level `"viewing_range"` for large scenes, default 100) holds camera positions (eye position, `yaw`/`pitch` in degrees
   or a `look_at` point), `time` of day (0–1), `fov` and `settle` seconds. All shots are taken in one engine
   start per game: `screenshots/<game>-<name>.png`. Without a list there is one shot with the scene's own
   camera (`screenshots/<game>.png`). The world seed is fixed (`--seed`, default `avanti`), so positions

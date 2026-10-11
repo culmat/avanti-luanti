@@ -27,6 +27,8 @@ Usage:
   avanti cdb status [PATH|AUTHOR/NAME]   ContentDB state, latest release, game support (read-only)
   avanti cdb release REF [PATH]      Create a ContentDB release from a pushed tag and wait for the
                                      import (needs CONTENTDB_TOKEN; not needed with a webhook)
+  avanti secrets setup|status|push   Accounts and tokens (ContentDB, Sketchfab, Smithsonian); push
+                                     copies them into a GitHub repository's Actions secrets
   avanti env                        Print the environment avanti uses
 
 Environment: AVANTI_HOME=$AVANTI_HOME (ldg uses its own LDG_HOME)
@@ -123,11 +125,19 @@ cmd_doctor() {
 	else
 		row warn "LuaLS annotations" "missing: avanti corpus sync"
 	fi
-	if [[ -n "${CONTENTDB_TOKEN:+set}" ]]; then
-		row ok "CONTENTDB_TOKEN" "set"
-	elif [[ $quiet -eq 0 ]]; then
-		note "      CONTENTDB_TOKEN        not set (only needed for avanti cdb release without a webhook)"
-	fi
+	local tok why
+	for tok in CONTENTDB_TOKEN SKETCHFAB_TOKEN SI_API_KEY; do
+		case "$tok" in
+		CONTENTDB_TOKEN) why="only needed to release to ContentDB" ;;
+		SKETCHFAB_TOKEN) why="optional: Sketchfab model search (sagas scout)" ;;
+		*) why="optional: Smithsonian model search (sagas scout)" ;;
+		esac
+		if [[ -n "${!tok:-}" ]]; then
+			row ok "$tok" "set"
+		elif [[ $quiet -eq 0 ]]; then
+			note "      $(printf '%-22s' "$tok") not set ($why; avanti secrets setup)"
+		fi
+	done
 	if [[ $quiet -eq 1 && $problems -gt 0 ]]; then
 		info "avanti doctor: $problems problem(s); run ./setup.sh or the hints above."
 	elif [[ $quiet -eq 0 ]]; then
@@ -867,7 +877,8 @@ avanti_camera.scene_ready()), else a generic showcase that lines up the mod's no
 daylit platform (tool-only mods are shown in hand).
 
 Shots: PATH/screenshots/shots.json (or --shots FILE) lists camera positions, directions, time
-of day and FOV; all of them are taken in one engine start per game and written to
+of day and FOV (a top-level "viewing_range" raises the client's view distance from the default
+100 for large scenes); all of them are taken in one engine start per game and written to
 DIR/<game>-<name>.png. Without a shot list there is one shot with the scene's own camera,
 written to DIR/<game>.png. The world seed is fixed (--seed, default "avanti") so recorded
 positions stay valid.
@@ -927,13 +938,18 @@ screenshot_world() {
 		echo "load_mod_avanti_camera = true"
 	} >"$run/world/world.mt"
 	[[ -f "$shots" ]] && cp "$shots" "$run/world/avanti_shots.json"
+	local view=100
+	if [[ -f "$shots" ]]; then
+		view="$(jq -r '.viewing_range // 100' "$shots" 2>/dev/null || echo 100)"
+		[[ "$view" =~ ^[0-9]+$ ]] || view=100
+	fi
 	{
 		echo "screen_w = $width"
 		echo "screen_h = $height"
 		echo "fullscreen = false"
 		echo "enable_minimap = false"
 		echo "show_debug = false"
-		echo "viewing_range = 100"
+		echo "viewing_range = $view"
 		echo "creative_mode = true"
 		echo "enable_damage = false"
 		echo "name = singleplayer"
@@ -1142,6 +1158,7 @@ main() {
 	screenshot) cmd_screenshot "$@" ;;
 	index) cmd_index "$@" ;;
 	cdb) cmd_cdb "$@" ;;
+	secrets) cmd_secrets "$@" ;;
 	env) cmd_env ;;
 	help | -h | --help) usage ;;
 	*) usage; exit 1 ;;

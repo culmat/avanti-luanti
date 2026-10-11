@@ -6,10 +6,11 @@
 #   ./setup.sh --dev       install the Claude Code plugin from this checkout instead of GitHub
 #   ./setup.sh --top N     corpus size (packages with sources fetched for analysis and search)
 #   ./setup.sh --yes       don't ask before installing the Luanti app
+#   ./setup.sh --secrets   also set up accounts and tokens (ContentDB, Sketchfab, Smithsonian)
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TOP=300 MINIMAL=0 DEV=0 YES=0
+TOP=300 MINIMAL=0 DEV=0 YES=0 SECRETS=0
 LDG_SOURCE="${LDG_SOURCE:-luanti-depgraph[search] @ git+https://github.com/culmat/luanti-depgraph}"
 
 while [[ $# -gt 0 ]]; do
@@ -17,8 +18,9 @@ while [[ $# -gt 0 ]]; do
 	--minimal) MINIMAL=1 ;;
 	--dev) DEV=1 ;;
 	--yes | -y) YES=1 ;;
+	--secrets) SECRETS=1 ;;
 	--top) TOP="$2"; shift ;;
-	-h | --help) sed -n '2,9p' "$0"; exit 0 ;;
+	-h | --help) sed -n '2,10p' "$0"; exit 0 ;;
 	*) echo "unknown option $1" >&2; exit 1 ;;
 	esac
 	shift
@@ -121,6 +123,15 @@ if have claude; then
 	claude plugin install lua-lsp@claude-plugins-official || true
 else
 	echo "Claude Code CLI not found; install it from https://code.claude.com, then re-run."
+fi
+
+step "Accounts and tokens (optional)"
+echo "Contributors: SKETCHFAB_TOKEN and SI_API_KEY let 'sagas scout' search more model sources."
+echo "Maintainers: CONTENTDB_TOKEN releases packages; 'avanti secrets push OWNER/REPO' hands tokens to CI."
+if [[ $SECRETS -eq 1 ]] || { [[ $YES -eq 0 && -t 0 ]] && ask "Set up accounts and tokens now?"; }; then
+	avanti secrets setup
+else
+	echo "skipped; run 'avanti secrets setup' any time"
 fi
 
 step "Doctor"
