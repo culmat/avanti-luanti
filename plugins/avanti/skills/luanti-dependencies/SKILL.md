@@ -18,6 +18,7 @@ when_to_use: Choosing or declaring depends/optional_depends, "will this work in 
    - Otherwise the order is undefined. With `random_mod_load_order = true` (which `avanti test` sets), undeclared dependencies break visibly.
    - A missing hard dependency stops the world from starting.
 5. **A user mod with the same name as a game mod silently replaces it.** There's only a log warning. Never reuse a game's mod name unless you're writing a drop-in replacement.
+   - **Never write a `default` shim** for Mineclonia or other games. Mods (and xcompat) detect Minetest Game with `get_modpath("default")`, so a shim would switch working mods onto their MTG code path. Port the mod to xcompat instead (see below).
 6. **Declared game support is advisory.** `supported_games` and `unsupported_games` in `mod.conf` feed ContentDB's game-support data; the engine ignores them. ContentDB also auto-detects support from *hard* dependencies only.
 
 ## Tools
@@ -33,6 +34,7 @@ Use the `luanti-depgraph` MCP tools (`mcp__plugin_avanti_luanti-depgraph__*`) or
 | Does my code use undeclared mods? | `lint_mod` | `ldg lint PATH` |
 | Who would I break by changing X? | `rdeps` | `ldg rdeps X [--transitive]` |
 | Is my mod name free? | `name_check` | `ldg name-check X` |
+| Which names keep the most mods out of game G? (ldg ≥ 0.3.0) | `blockers` | `ldg blockers --game G` |
 | Anything else | `query_sql`, `query_cypher` | `ldg sql`, `ldg cypher` |
 
 How to read the results:
@@ -57,6 +59,7 @@ For a visual overview, or a link to share with other modders, use the dependency
 2. **Prefer game-agnostic library mods** that exist as standalone packages.
    - `xcompat` (mt-mods) provides materials, sounds, textures, player and stairs helpers across MTG, Mineclonia, VoxeLibre and others.
    - Read its API in the corpus: `~/.avanti/corpus/packages/mt-mods/xcompat`, or search with zvec-grep.
+   - **To replace `default` in an existing mod, follow [xcompat-porting.md](xcompat-porting.md):** call-by-call and item-by-item mapping, the gaps, and how to stay compatible with existing worlds.
 3. **For game-specific integrations, use optional dependencies plus guards.** Always list the mod in `optional_depends` so it loads first:
    ```lua
    if core.get_modpath("default") then
