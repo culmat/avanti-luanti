@@ -231,6 +231,7 @@ cmd_corpus() {
 
 # zvec-grep silently skips git repositories nested below the index root, and the corpus is
 # a set of git checkouts, so search runs on a text-only mirror without .git.
+# search_mirror: exit 0 if any file changed.
 search_mirror() {
 	note "mirroring text sources of $AVANTI_CORPUS into $AVANTI_SEARCH"
 	mkdir -p "$AVANTI_SEARCH"
@@ -238,22 +239,45 @@ search_mirror() {
 		--exclude='.git/' --exclude='.zvec-grep/' --exclude='.ldg-release' \
 		--include='*/' --include='*.lua' --include='*.md' --include='*.txt' --include='*.conf' \
 		--include='*.tr' --include='*.po' --include='*.json' --include='*.yml' --include='*.luacheckrc' \
-		--exclude='*' "$AVANTI_CORPUS/" "$AVANTI_SEARCH/"
+		--exclude='*' --itemize-changes "$AVANTI_CORPUS/" "$AVANTI_SEARCH/" |
+		grep -E '^(>|c|h|\*deleting)' >/dev/null # files sent, created or deleted
 }
 
 cmd_index() {
 	local path="${1:-}"
 	have zg || die "zvec-grep is not installed: npm i -g @zvec/zvec-grep"
 	if [[ -z "$path" ]]; then
-		search_mirror
 		path="$AVANTI_SEARCH"
+		if ! search_mirror && [[ -d "$path/.zvec-grep" ]]; then
+			note "search index is up to date (no corpus changes)"
+			return 0
+		fi
 	fi
 	note "indexing $path (local embeddings; the first run downloads the model)"
-	if [[ -d "$path/.zvec-grep" ]]; then
-		zg index "$path" # incremental; reuses the stored embedding model
-	else
-		zg index "$path" --embedding "${AVANTI_EMBEDDING:-local/potion-code-16m-v2}"
+	# auto: hand the work to a running zvec-grep daemon (the plugin's MCP server owns index
+	# writes while it runs), else index directly.
+	export ZVEC_GREP_MODE="${ZVEC_GREP_MODE:-auto}"
+	# auto falls back to direct writes (and collides with the daemon) while it is still starting.
+	local tries=0
+	while [[ $tries -lt 30 ]] && zg server status 2>/dev/null | grep -q '^Server: starting'; do
+		[[ $tries -eq 0 ]] && note "waiting for the zvec-grep daemon to become ready"
+		sleep 2
+		tries=$((tries + 1))
+	done
+	local args=("$path") err rc=0
+	# Incremental runs reuse the stored embedding model.
+	[[ -d "$path/.zvec-grep" ]] || args+=(--embedding "${AVANTI_EMBEDDING:-local/potion-code-16m-v2}")
+	err="$(mktemp)"
+	# stderr goes to the terminal and to $err; stdout stays on stdout.
+	{ zg index "${args[@]}" 2>&1 1>&3 | tee "$err" >&2 || rc=${PIPESTATUS[0]}; } 3>&1
+	# A daemon that is busy indexing or still starting owns the index and refreshes it itself.
+	if [[ $rc -ne 0 ]] && { grep -q 'DAEMON_LEASE_ACTIVE' "$err" ||
+		{ grep -q 'LOCK.BUSY' "$err" && grep -q 'ownerOperation: index' "$err"; }; }; then
+		note "the zvec-grep daemon owns $path and refreshes the index itself (zg server status)"
+		rc=0
 	fi
+	rm -f "$err"
+	return "$rc"
 }
 
 # ---------------------------------------------------------------- new
