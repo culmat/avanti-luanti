@@ -22,7 +22,7 @@ This mod was created with [avanti-luanti](https://github.com/culmat/avanti-luant
 
 ```sh
 avanti test            # luacheck + ldg lint + headless run in every supported game
-avanti serve --game minetest
+avanti play --game minetest   # creative world with this working copy (no hot reload: rerun after edits)
 ```
 
 ## AI disclosure

@@ -75,6 +75,22 @@ luanti_bin() {
 	return 1
 }
 
+# Engine binary with a window (no luantiserver): LUANTI_BIN, luanti, the macOS app, legacy names.
+luanti_client_bin() {
+	local candidate
+	for candidate in "${LUANTI_BIN:-}" luanti /Applications/Luanti.app/Contents/MacOS/luanti minetest; do
+		[[ -n "$candidate" ]] || continue
+		if [[ -x "$candidate" ]]; then
+			echo "$candidate"
+			return 0
+		elif have "$candidate"; then
+			command -v "$candidate"
+			return 0
+		fi
+	done
+	return 1
+}
+
 luanti_version() { # luanti_version <binary> -> 5.17.0
 	"$1" --version 2>/dev/null | awk 'NR == 1 { print $2 }'
 }

@@ -94,4 +94,8 @@ The template's `.luacheckrc` uses `std = "luajit"` and lists the engine globals 
 
 ## Play-testing
 
-`avanti serve --game mineclonia` starts a server on 127.0.0.1:30000 with a persistent world in `~/.avanti/worlds/`. Join it from the Luanti client to check what tests can't: visuals, sounds, formspec layout.
+`avanti play --game mineclonia` opens the Luanti client straight into a creative world (`<repo>/.dev/worlds/<game>`, gitignore `/.dev/`) to check what tests can't: visuals, sounds, formspec layout. The mod is symlinked into the world's `worldmods/`, so the world always runs the working copy; never copy mods into the Luanti mods folder for testing.
+
+Luanti has no hot reload: Lua state is built once at startup, and schematics loaded from a file stay cached until the server restarts (`core.place_schematic` in `lua_api.md`). After a change, quit and rerun `avanti play`; `--fresh` starts a new map.
+
+`avanti serve --game mineclonia` runs the same world setup as a server on 127.0.0.1:30000 (world in `~/.avanti/worlds/`), for joining from another client or with several players.

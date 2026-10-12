@@ -19,6 +19,8 @@ Usage:
                                      sources into \$AVANTI_HOME/corpus, then index them for search
   avanti new NAME [options]          Scaffold a mod from the template (see avanti new --help)
   avanti test [PATH] [options]       Lint, then run PATH headlessly in each game x engine
+  avanti play [PATH] [--game ID]     Open the Luanti client in a creative world that loads PATH
+                                     live from the working copy (symlink, no copy)
   avanti serve [PATH] --game ID      Run a local server with the mod for play-testing
   avanti screenshot [PATH]           In-game screenshots from a shot list (macOS, Luanti app)
   avanti screenshot --record --game ID   Fly around and save viewpoints with /shot <name>
@@ -615,7 +617,113 @@ cmd_test() {
 	[[ "$failed" -eq 0 && $lint_ok -eq 1 ]]
 }
 
-# ---------------------------------------------------------------- serve
+# ---------------------------------------------------------------- play / serve
+
+# play_path <path>: the mod or modpack to load. A repository root that holds the code in mods/
+# (a modpack or a single mod) resolves to that folder; anything else that isn't a mod is an error.
+play_path() {
+	local path
+	path="$(cd "$1" && pwd)"
+	if [[ ! -f "$path/init.lua" && ! -f "$path/modpack.conf" && ! -f "$path/mod.conf" ]]; then
+		if [[ -f "$path/mods/modpack.conf" || -f "$path/mods/init.lua" ]]; then
+			path="$path/mods"
+		else
+			die "$path is not a mod or modpack (no init.lua or modpack.conf); pass the mod folder"
+		fi
+	fi
+	echo "$path"
+}
+
+# dev_world <path> <game> <world>: a world that loads the working copy at <path> live. The package
+# is symlinked into <world>/worldmods (always loaded, no load_mod_ lines), so edits need only a
+# restart, never a copy. Dependencies the game lacks are installed next to it by ldg.
+dev_world() {
+	local path="$1" game="$2" world="$3" id folder
+	id="$(game_id "$game")"
+	folder="$(basename "$path")"
+	if [[ -f "$path/init.lua" ]]; then
+		folder="$(awk -F'=' '/^[[:space:]]*name[[:space:]]*=/ { gsub(/[[:space:]]/, "", $2); print $2 }' "$path/mod.conf" 2>/dev/null)"
+	elif [[ -f "$path/modpack.conf" ]]; then
+		folder="$(awk -F'=' '/^[[:space:]]*name[[:space:]]*=/ { gsub(/[[:space:]]/, "", $2); print $2 }' "$path/modpack.conf")"
+	fi
+	folder="${folder:-$(basename "$path")}"
+	mkdir -p "$world/worldmods"
+	# Links from earlier runs (another path or folder name) would load stale or duplicate mods.
+	find "$world/worldmods" -maxdepth 1 -type l -exec rm -f {} +
+	ln -sfn "$path" "$world/worldmods/$folder"
+	ldg install "$path" --game "$game" --dest "$world/worldmods" --json >/dev/null ||
+		die "dependencies can't be met in $game (ldg resolve $path --game $game)"
+	if [[ ! -f "$world/world.mt" ]]; then
+		echo "gameid = $id" >"$world/world.mt"
+		echo "backend = sqlite3" >>"$world/world.mt"
+	fi
+	# Worlds from older avanti versions enabled copied mods by name; worldmods replaces that.
+	sed -i.bak '/^load_mod_/d' "$world/world.mt" && rm -f "$world/world.mt.bak"
+}
+
+play_usage() {
+	cat <<'USAGE'
+Usage: avanti play [PATH] [--game ID] [--world DIR] [--fresh]
+
+Opens the Luanti client straight into a creative world (no damage) that loads the mod or
+modpack at PATH (default .; a repository root with its code in mods/ works too) from your
+working copy: symlinked into the world's worldmods, never copied. Luanti has no hot reload,
+so after an edit or a rebuild quit and run it again. The log goes to <world>/debug.txt.
+
+--game ID    Game to play in (default: first of supported_games, else minetest); must be synced
+--world DIR  World folder (default: <git toplevel of PATH>/.dev/worlds/<game>; add /.dev/ to
+             .gitignore)
+--fresh      Delete the world first (new map)
+USAGE
+}
+
+cmd_play() {
+	local path="." game="" world="" fresh=0
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+		--game) game="$2"; shift 2 ;;
+		--world) world="$2"; shift 2 ;;
+		--fresh) fresh=1; shift ;;
+		-h | --help) play_usage; return 0 ;;
+		-*) die "unknown option $1" ;;
+		*) path="$1"; shift ;;
+		esac
+	done
+	path="$(play_path "$path")" || exit 1
+	[[ -n "$game" ]] || game="$(declared_games "$path" | head -1)"
+	game="${game:-minetest}"
+	local gdir id bin root
+	gdir="$(game_dir "$game")"
+	[[ -n "$gdir" ]] || die "game $game not synced: avanti games sync $game"
+	id="$(game_id "$game")"
+	bin="$(luanti_client_bin)" || die "no Luanti client found (brew install --cask luanti, or set LUANTI_BIN)"
+	if [[ -z "$world" ]]; then
+		root="$(git -C "$path" rev-parse --show-toplevel 2>/dev/null || echo "$path")"
+		world="$root/.dev/worlds/$id"
+	fi
+	[[ $fresh -eq 1 ]] && rm -rf "$world"
+	dev_world "$path" "$game" "$world"
+	# --go skips the main menu, which is what copies creative_mode and enable_damage from world.mt
+	# into the settings. So: the player's own config (keys, graphics) plus those two, per launch.
+	local conf="$world/client.conf" user_conf="" candidate
+	for candidate in "${LUANTI_USER_PATH:-}" "${MINETEST_USER_PATH:-}" \
+		"$HOME/Library/Application Support/luanti" "$HOME/Library/Application Support/minetest" \
+		"$HOME/.luanti" "$HOME/.minetest"; do
+		if [[ -n "$candidate" && -f "$candidate/minetest.conf" ]]; then
+			user_conf="$candidate/minetest.conf"
+			break
+		fi
+	done
+	{
+		[[ -n "$user_conf" ]] && grep -vE '^[[:space:]]*(creative_mode|enable_damage)[[:space:]]*=' "$user_conf"
+		echo "creative_mode = true"
+		echo "enable_damage = false"
+	} >"$conf"
+	info "playing $path in $game; world and debug.txt: $world"
+	info "no hot reload: after a change, quit Luanti and run this again"
+	LUANTI_GAME_PATH="$(dirname "$gdir")" MINETEST_GAME_PATH="$(dirname "$gdir")" \
+		exec "$bin" --go --world "$world" --gameid "$id" --config "$conf" --logfile "$world/debug.txt"
+}
 
 cmd_serve() {
 	local path="." game="" port=30000
@@ -628,29 +736,17 @@ cmd_serve() {
 		esac
 	done
 	[[ -n "$game" ]] || die "avanti serve [PATH] --game ID"
-	path="$(cd "$path" && pwd)"
-	local gdir id world mods bin
+	path="$(play_path "$path")" || exit 1
+	local gdir id world bin
 	gdir="$(game_dir "$game")"
 	[[ -n "$gdir" ]] || die "game $game not synced: avanti games sync $game"
 	id="$(game_id "$game")"
 	bin="$(luanti_bin)" || die "no native Luanti binary"
 	world="$AVANTI_HOME/worlds/$(basename "$path")-$id"
-	mods="$world/.avanti-mods"
-	mkdir -p "$mods"
-	rsync -a --delete --exclude .git "$path/" "$mods/$(basename "$path")/"
-	local install_json
-	install_json="$(ldg install "$path" --game "$game" --dest "$mods" --json)" ||
-		die "dependencies can't be met in $game (ldg resolve $path --game $game)"
-	if [[ ! -f "$world/world.mt" ]]; then
-		echo "gameid = $id" >"$world/world.mt"
-		echo "backend = sqlite3" >>"$world/world.mt"
-	fi
-	sed -i.bak '/^load_mod_/d' "$world/world.mt" && rm -f "$world/world.mt.bak"
-	jq -r '.enable[] | "load_mod_\(.) = true"' <<<"$install_json" >>"$world/world.mt"
+	dev_world "$path" "$game" "$world"
 	info "serving $(basename "$path") in $game on 127.0.0.1:$port; world: $world"
 	info "connect with the Luanti client (Join Game -> 127.0.0.1 : $port); Ctrl-C to stop"
 	LUANTI_GAME_PATH="$(dirname "$gdir")" MINETEST_GAME_PATH="$(dirname "$gdir")" \
-		LUANTI_MOD_PATH="$mods" MINETEST_MOD_PATH="$mods" \
 		exec "$bin" --server --world "$world" --gameid "$id" --port "$port"
 }
 
@@ -971,7 +1067,7 @@ screenshot_launch() {
 	local gdir id bin
 	gdir="$(game_dir "$1")"
 	id="$(game_id "$1")"
-	bin="$(luanti_bin)" || die "no Luanti app found (brew install --cask luanti)"
+	bin="$(luanti_client_bin)" || die "no Luanti app found (brew install --cask luanti)"
 	LUANTI_GAME_PATH="$(dirname "$gdir")" MINETEST_GAME_PATH="$(dirname "$gdir")" \
 		LUANTI_MOD_PATH="$2/mods" LUANTI_USER_PATH="$2/user" \
 		"$bin" --go --world "$2/world" --gameid "$id" --config "$2/client.conf" \
@@ -1154,6 +1250,7 @@ main() {
 	corpus) [[ "${1:-}" == sync ]] && shift; cmd_corpus "$@" ;;
 	new) cmd_new "$@" ;;
 	test) cmd_test "$@" ;;
+	play) cmd_play "$@" ;;
 	serve) cmd_serve "$@" ;;
 	screenshot) cmd_screenshot "$@" ;;
 	index) cmd_index "$@" ;;
