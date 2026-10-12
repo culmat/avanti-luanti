@@ -76,7 +76,8 @@ secrets_open() {
 secrets_usage() {
 	cat <<'EOF'
 Usage: avanti secrets setup           Create accounts and paste tokens (opens the token pages)
-       avanti secrets status          Which tokens are set, and whether the services accept them
+       avanti secrets status [--quiet] Which tokens are set, and whether the services accept them
+                                      (--quiet: no output; exit 0 only if all are set)
        avanti secrets push OWNER/REPO [--environment NAME]
                                       Copy the tokens into the repository's GitHub Actions secrets
 
@@ -131,6 +132,12 @@ secrets_setup() {
 
 secrets_status() {
 	local name who what url kind value state
+	if [[ "${1:-}" == --quiet ]]; then # exit 0 if every token is set; no output, no network
+		while IFS='|' read -r name _; do
+			[[ -n "${!name:-}" ]] || return 1
+		done <<<"$AVANTI_SECRET_SPECS"
+		return 0
+	fi
 	while IFS='|' read -r name who what url kind; do
 		value="${!name:-}"
 		if [[ -z "$value" ]]; then
@@ -183,7 +190,7 @@ cmd_secrets() {
 	shift || true
 	case "$sub" in
 	setup) secrets_setup ;;
-	status) secrets_status ;;
+	status) secrets_status "$@" ;;
 	push) secrets_push "$@" ;;
 	-h | --help | help | "") secrets_usage ;;
 	*) secrets_usage; exit 1 ;;

@@ -67,6 +67,14 @@ cmd_doctor() {
 	tool ldg fail "uv tool install git+https://github.com/culmat/luanti-depgraph" "ldg version"
 	if have luacheck && ! luacheck --version >/dev/null 2>&1; then
 		row warn luacheck "installed but broken (Lua 5.5?): luarocks --lua-version=5.1 --lua-dir=\"\$(brew --prefix luajit)\" install --local luacheck"
+	elif ! have luacheck && [[ -x "$HOME/.luarocks/bin/luacheck" ]]; then
+		local rc
+		rc="$(grep -l '\.luarocks/bin' "$HOME/.bash_profile" "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile" 2>/dev/null | head -1)"
+		if [[ -n "$rc" ]]; then
+			row warn luacheck "not on this terminal's PATH yet: open a new terminal, or run: source $rc"
+		else
+			row warn luacheck "not on your PATH: run ./setup.sh, or add to your shell startup file: export PATH=\"\$HOME/.luarocks/bin:\$PATH\""
+		fi
 	else
 		tool luacheck warn "luarocks --lua-version=5.1 install --local luacheck"
 	fi
