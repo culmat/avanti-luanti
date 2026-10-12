@@ -1,4 +1,0 @@
-[    1498ms] [ERROR] Error: No package culmat/glowshroom
-    at showPackage (https://culmat.github.io/luanti-depgraph/app.js?v=2026-10-10T2038480000:434:23)
-    at route (https://culmat.github.io/luanti-depgraph/app.js?v=2026-10-10T2038480000:359:54)
-    at load (https://culmat.github.io/luanti-depgraph/app.js?v=2026-10-10T2038480000:94:3) @ https://culmat.github.io/luanti-depgraph/app.js?v=2026-10-10T2038480000:365
