@@ -4,4 +4,5 @@
 minetest	minetest_game	https://github.com/luanti-org/minetest_game.git
 mineclonia	mineclonia	https://codeberg.org/mineclonia/mineclonia.git
 mineclone2	mineclone2	https://git.minetest.land/VoxeLibre/VoxeLibre.git
+asuna	asuna	https://github.com/asuna-mt/asuna.git
 devtest	devtest	engine:games/devtest

@@ -104,7 +104,7 @@ The `avanti` and `ldg` CLIs must also be on your PATH (`setup.sh` does that).
 
 ```
 avanti doctor                      check tools, games, database, index
-avanti games sync [ID...]          minetest, mineclonia, mineclone2, devtest
+avanti games sync [ID...]          minetest, mineclonia, mineclone2, asuna, devtest
 avanti corpus sync [--top N]       engine docs + games + vendored refs + top-N package sources, then index
 avanti new NAME [...]              scaffold from plugins/avanti/templates/mod
 avanti test [PATH] [...]           lint + headless run per game × engine (native or Docker)

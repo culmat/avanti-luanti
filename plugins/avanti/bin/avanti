@@ -169,6 +169,11 @@ shallow_sync() { # shallow_sync <url> <dir>
 		mkdir -p "$(dirname "$dir")"
 		git clone --quiet --depth 1 "$url" "$dir"
 	fi
+	# Games like Asuna keep every mod in a submodule.
+	if [[ -f "$dir/.gitmodules" ]]; then
+		git -C "$dir" submodule --quiet sync --recursive
+		git -C "$dir" submodule --quiet update --init --recursive --depth 1 --jobs 8
+	fi
 }
 
 engine_sync() {

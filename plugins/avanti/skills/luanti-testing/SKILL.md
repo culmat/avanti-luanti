@@ -38,6 +38,7 @@ Logs are in `debug.txt` under the run's temp directory (printed for FAIL and WAR
 | `minetest` | Minetest Game |
 | `mineclonia` | Mineclonia |
 | `mineclone2` | VoxeLibre |
+| `asuna` | Asuna (Minetest Game based, mods as git submodules) |
 | `devtest` | The engine's test game |
 
 ## Writing mtt tests

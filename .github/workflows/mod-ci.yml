@@ -13,7 +13,7 @@ on:
   workflow_call:
     inputs:
       games:
-        description: Comma-separated reference game ids (minetest, mineclonia, mineclone2, devtest)
+        description: Comma-separated reference game ids (minetest, mineclonia, mineclone2, asuna, devtest)
         type: string
         default: minetest,mineclonia,mineclone2
       engines:
