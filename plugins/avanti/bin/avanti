@@ -805,7 +805,8 @@ release  Create a release from the git ref REF (a pushed tag such as v1.2.0) and
 whoami   Check CONTENTDB_TOKEN; prints the user name only.
 
 The package is AUTHOR/NAME, or NAME from PATH's mod.conf/modpack.conf/game.conf with AUTHOR
-from AVANTI_CONTENTDB_USER (else from the token).
+from AVANTI_CONTENTDB_USER (else from the token). If there is no such package (a co-maintainer's
+checkout), it is the package named NAME whose repository is PATH's git origin.
 EOF
 }
 
@@ -822,6 +823,28 @@ package_name() {
 
 cdb_whoami() { CDB_AUTH=1 cdb_get /api/whoami/ | jq -r '.username // empty'; }
 
+# repo_key <git url>: host/owner/repo in lower case, so SSH and HTTPS remotes compare equal.
+repo_key() {
+	sed -E 's#^[a-z+]+://##; s#^[^@/]+@##; s#:#/#; s#\.git/?$##; s#/$##' <<<"$1" | tr '[:upper:]' '[:lower:]'
+}
+
+# cdb_find_by_repo <name> <dir>: AUTHOR/NAME of the package called <name> whose repository is
+# <dir>'s git origin.
+cdb_find_by_repo() {
+	local name="$1" origin candidate repo
+	origin="$(git -C "$2" remote get-url origin 2>/dev/null)" || return 1
+	origin="$(repo_key "$origin")"
+	while IFS= read -r candidate; do
+		repo="$(cdb_get "/api/packages/$candidate/" 2>/dev/null | jq -r '.repo // empty')"
+		if [[ -n "$repo" && "$(repo_key "$repo")" == "$origin" ]]; then
+			echo "$candidate"
+			return 0
+		fi
+	done < <(cdb_get "/api/packages/?q=$name" 2>/dev/null |
+		jq -r --arg n "$name" '.[] | select(.name == $n) | "\(.author)/\(.name)"')
+	return 1
+}
+
 # cdb_target <PATH|AUTHOR/NAME>: sets CDB_PKG (author/name) and CDB_PATH (local dir or empty).
 cdb_target() {
 	local arg="$1" author="${AVANTI_CONTENTDB_USER:-}"
@@ -832,9 +855,15 @@ cdb_target() {
 	fi
 	[[ -d "$arg" ]] || die "no such directory: $arg"
 	CDB_PATH="$(cd "$arg" && pwd)"
+	local name
+	name="$(package_name "$CDB_PATH")"
 	if [[ -z "$author" && -n "${CONTENTDB_TOKEN:+set}" ]]; then author="$(cdb_whoami)" || true; fi
+	# Co-maintainers aren't the author: find the package by this checkout's git origin.
+	if [[ -z "$author" ]] || ! cdb_get "/api/packages/$author/$name/" >/dev/null 2>&1; then
+		CDB_PKG="$(cdb_find_by_repo "$name" "$CDB_PATH")" && return 0
+	fi
 	[[ -n "$author" ]] || die "unknown ContentDB author: set AVANTI_CONTENTDB_USER or pass AUTHOR/NAME"
-	CDB_PKG="$author/$(package_name "$CDB_PATH")"
+	CDB_PKG="$author/$name"
 }
 
 cdb_status() {
