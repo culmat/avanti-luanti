@@ -196,14 +196,14 @@ cmd_games() {
 	case "$sub" in
 	list)
 		local id folder source dir
-		while IFS=$'\t' read -r id folder source; do
+		while IFS=$'\t' read -r id folder source _; do
 			dir="$(game_dir "$id")"
 			printf '%-12s %-14s %s\n' "$id" "${dir:+synced}" "${dir:-$source}"
 		done < <(games_table)
 		;;
 	sync)
 		local wanted=("$@") id folder source
-		while IFS=$'\t' read -r id folder source; do
+		while IFS=$'\t' read -r id folder source _; do
 			if [[ ${#wanted[@]} -gt 0 ]] && [[ ! " ${wanted[*]} " =~ \ ($id|$folder)\  ]]; then
 				continue
 			fi
@@ -386,7 +386,7 @@ Usage: avanti test [PATH] [--game ID]... [--engine VERSION]... [--runner auto|na
 
 Lints PATH (luacheck, stylua, ldg lint), then for every game x engine builds a throwaway
 world with PATH, the dependencies `ldg install` resolves for that game and a smoke-test
-mod (or mtt, if the mod uses it), runs the server headlessly with random_mod_load_order,
+mod (or mtt, if the mod uses it), runs the server headlessly with random_mod_load_order (not in games marked fixed-order),
 and reports errors from the log. Only errors that mention the mod fail the run; errors from
 the game or other mods are reported as WARN, a game that can't start on that engine as BROKEN,
 and engines below the game's min_minetest_version are skipped. Games default to supported_games in mod.conf/modpack.conf,
@@ -510,7 +510,7 @@ run_case() {
 		jq -r '.enable[] | "load_mod_\(.) = true"' <<<"$install_json"
 	} >"$run/world/world.mt"
 	{
-		echo "random_mod_load_order = $([[ "${FIXED_ORDER:-0}" -eq 1 ]] && echo false || echo true)"
+		echo "random_mod_load_order = $([[ "${FIXED_ORDER:-0}" -eq 1 ]] || game_has_option "$game" fixed-order && echo false || echo true)"
 		echo "server_announce = false"
 		echo "ipv6_server = false"
 		echo "bind_address = 127.0.0.1"

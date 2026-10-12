@@ -30,11 +30,16 @@ die() {
 }
 have() { command -v "$1" >/dev/null 2>&1; }
 
-# Lines of games.tsv without comments: "id folder source".
+# Lines of games.tsv without comments: "id folder source [options]".
 games_table() { grep -v '^#' "$AVANTI_LIB/games.tsv" | grep -v '^$'; }
 
-game_field() { # game_field <id-or-folder> <column 1..3>
+game_field() { # game_field <id-or-folder> <column 1..4>
 	games_table | awk -F'\t' -v g="$1" -v c="$2" '$1 == g || $2 == g { print $c; exit }'
+}
+
+# Options from the optional 4th column of games.tsv, comma-separated.
+game_has_option() { # game_has_option <id-or-folder> <option>
+	[[ ",$(game_field "$1" 4)," == *",$2,"* ]]
 }
 
 # Directory of a synced game, or empty.

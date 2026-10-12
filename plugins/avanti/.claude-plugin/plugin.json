@@ -1,6 +1,6 @@
 {
   "name": "avanti",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Luanti mod factory: modding and dependency skills, /avanti commands, headless multi-game testing, a dependency-graph MCP server (luanti-depgraph) and semantic search (zvec-grep).",
   "author": {
     "name": "Matthias Cullmann",
