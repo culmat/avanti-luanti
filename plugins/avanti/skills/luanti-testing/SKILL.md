@@ -140,7 +140,7 @@ avanti survey --set mymod_debug=true --json          # pass the mod's own settin
   | Mineclonia | about 2.5 |
 
   Use `--chunks 600` or fewer in Mineclonia for quick runs. The default timeout is one second per mapchunk, at least 600 s.
-- **Visiting.** With `--keep` the world stays in `~/.avanti/worlds/survey-<name>-<game>-<seed>/world`, and `avanti play PATH --game G --world <that> --lite` opens it. A new `--keep` run deletes the previous world of the same name, game and seed. The mod's own teleport or tour commands then visit the placements. This opens the Luanti window: ask the user first.
+- **Visiting.** With `--keep` the world stays in `~/.avanti/worlds/survey-<name>-<game>-<seed>/world`, and `avanti play PATH --game G --world <that> --lite` opens it. The player starts near the origin and structures are often hundreds of metres away, so the survey also prints a `/teleport` to the nearest one and the bridge's own visit commands (a bridge returns them as `visit` from `register_on_finish`). A new `--keep` run deletes the previous world of the same name, game and seed. The mod's own teleport or tour commands then visit the placements. This opens the Luanti window: ask the user first.
 
 Balance rules of thumb for structure mods:
 - Big or detailed builds should rarely repeat (aim for 2 km or more between copies).

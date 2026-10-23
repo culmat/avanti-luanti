@@ -1224,7 +1224,16 @@ cmd_survey() {
 		info ""
 		info "world kept: $run/world (report: $report)"
 		info "visit it:   avanti play $path --game $game --world $run/world --lite"
-		info "            (--lite: smoother picture on integrated graphics; mods may offer commands to visit what was placed)"
+		# You start near the origin and structures are often hundreds of metres away: say where to go.
+		local near nx ny nz nid nd
+		near="$(jq -r '[(.placements // [])[] | {id, x: .pos.x, y: .pos.y, z: .pos.z,
+			d: ((.pos.x * .pos.x + .pos.z * .pos.z) | sqrt)}] | sort_by(.d) | .[0] // empty
+			| "\(.x) \(.y + 20) \(.z) \(.id) \(.d | floor)"' "$report")"
+		if [[ -n "$near" ]]; then
+			read -r nx ny nz nid nd <<<"$near"
+			info "in game:    /teleport $nx $ny $nz   (the nearest structure, $nid, $nd m from where you start)"
+		fi
+		jq -r '(.mods // {}) | to_entries[] | select(.value.visit) | "            \(.value.visit)"' "$report" >&2
 	else
 		rm -rf "$run"
 	fi
