@@ -20,8 +20,10 @@ Usage:
   avanti new NAME [options]          Scaffold a mod from the template (see avanti new --help)
   avanti test [PATH] [options]       Lint, then run PATH headlessly in each game x engine
   avanti play [PATH] [--game ID]     Open the Luanti client in a creative world that loads PATH
-                                     live from the working copy (symlink, no copy)
+                                     live from the working copy (symlink, no copy), flying, as admin
   avanti serve [PATH] --game ID      Run a local server with the mod for play-testing
+  avanti survey [PATH] [options]     Generate a map sample headlessly and report what mapgen placed:
+                                     biomes, structure density and spacing, balance findings
   avanti screenshot [PATH]           In-game screenshots from a shot list (macOS, Luanti app)
   avanti screenshot --record --game ID   Fly around and save viewpoints with /shot <name>
   avanti index [PATH]                (Re)build the zvec-grep index (default: the corpus, via a
@@ -424,6 +426,40 @@ lint_step() { # lint_step <path>; returns non-zero on blocking problems
 	return $failed
 }
 
+# run_server <run> <game> <engine> <runner> <timeout> <conf>: run the server headlessly on <run>/world
+# with the mods in <run>/mods and the config <run>/<conf>, logging to <run>/debug.txt (stdout and
+# stderr go to <run>/stdout.txt). Returns the server's exit code (124 or 142 on timeout).
+run_server() {
+	local run="$1" game="$2" engine="$3" runner="$4" limit="$5" conf="$6"
+	local id folder gdir code=0
+	id="$(game_id "$game")"
+	folder="$(game_field "$game" 2)"
+	gdir="$(game_dir "$game")"
+	local port=$((30000 + RANDOM % 5000))
+	if [[ "$runner" == native ]]; then
+		local bin
+		bin="$(luanti_bin)" || die "no native Luanti binary (brew install --cask luanti, or --runner docker)"
+		LUANTI_GAME_PATH="$(dirname "$gdir")" MINETEST_GAME_PATH="$(dirname "$gdir")" \
+			LUANTI_MOD_PATH="$run/mods" MINETEST_MOD_PATH="$run/mods" \
+			LUANTI_USER_PATH="$run/user" MINETEST_USER_PATH="$run/user" \
+			run_with_timeout "$limit" "$bin" --server --world "$run/world" --gameid "$id" \
+			--config "$run/$conf" --logfile "$run/debug.txt" --port "$port" >"$run/stdout.txt" 2>&1 || code=$?
+	else
+		docker_ready || die "docker daemon not running (colima start / Docker Desktop), or use --runner native"
+		# shellcheck disable=SC2016  # $@ expands inside the container's sh
+		run_with_timeout "$limit" docker run --rm --user "$(id -u):$(id -g)" \
+			-v "$run:/avanti" -v "$gdir:/games/$folder:ro" \
+			-e LUANTI_GAME_PATH=/games -e MINETEST_GAME_PATH=/games \
+			-e LUANTI_MOD_PATH=/avanti/mods -e MINETEST_MOD_PATH=/avanti/mods \
+			-e LUANTI_USER_PATH=/avanti/user -e MINETEST_USER_PATH=/avanti/user -e HOME=/avanti/user \
+			--entrypoint sh "$(engine_image "$engine")" \
+			-c 'exec "$(command -v luantiserver || command -v minetestserver)" "$@"' sh \
+			--world /avanti/world --gameid "$id" --config "/avanti/$conf" \
+			--logfile /avanti/debug.txt --port 30000 >"$run/stdout.txt" 2>&1 || code=$?
+	fi
+	return "$code"
+}
+
 # run_case <path> <game> <engine> <runner> <timeout> <keep> -> appends a JSON line to $RESULTS
 run_case() {
 	local path="$1" game="$2" engine="$3" runner="$4" limit="$5" keep="$6"
@@ -524,32 +560,7 @@ run_case() {
 		fi
 	} >"$run/test.conf"
 
-	local port=$((30000 + RANDOM % 5000))
-	set +e
-	if [[ "$runner" == native ]]; then
-		local bin
-		bin="$(luanti_bin)" || die "no native Luanti binary (brew install --cask luanti, or --runner docker)"
-		LUANTI_GAME_PATH="$(dirname "$gdir")" MINETEST_GAME_PATH="$(dirname "$gdir")" \
-			LUANTI_MOD_PATH="$run/mods" MINETEST_MOD_PATH="$run/mods" \
-			LUANTI_USER_PATH="$run/user" MINETEST_USER_PATH="$run/user" \
-			run_with_timeout "$limit" "$bin" --server --world "$run/world" --gameid "$id" \
-			--config "$run/test.conf" --logfile "$run/debug.txt" --port "$port" >"$run/stdout.txt" 2>&1
-		code=$?
-	else
-		docker_ready || die "docker daemon not running (colima start / Docker Desktop), or use --runner native"
-		# shellcheck disable=SC2016  # $@ expands inside the container's sh
-		run_with_timeout "$limit" docker run --rm --user "$(id -u):$(id -g)" \
-			-v "$run:/avanti" -v "$gdir:/games/$folder:ro" \
-			-e LUANTI_GAME_PATH=/games -e MINETEST_GAME_PATH=/games \
-			-e LUANTI_MOD_PATH=/avanti/mods -e MINETEST_MOD_PATH=/avanti/mods \
-			-e LUANTI_USER_PATH=/avanti/user -e MINETEST_USER_PATH=/avanti/user -e HOME=/avanti/user \
-			--entrypoint sh "$(engine_image "$engine")" \
-			-c 'exec "$(command -v luantiserver || command -v minetestserver)" "$@"' sh \
-			--world /avanti/world --gameid "$id" --config /avanti/test.conf \
-			--logfile /avanti/debug.txt --port 30000 >"$run/stdout.txt" 2>&1
-		code=$?
-	fi
-	set -e
+	run_server "$run" "$game" "$engine" "$runner" "$limit" test.conf || code=$?
 
 	local ours
 	ours="$(grep -E 'ERROR\[|ModError|Runtime error' "$run/debug.txt" 2>/dev/null |
@@ -700,7 +711,7 @@ dev_world() {
 
 play_usage() {
 	cat <<'USAGE'
-Usage: avanti play [PATH] [--game ID] [--world DIR] [--fresh]
+Usage: avanti play [PATH] [--game ID] [--world DIR] [--fresh] [--lite]
 
 Opens the Luanti client straight into a creative world (no damage) that loads the mod or
 modpack at PATH (default .; a repository root with its code in mods/ works too) from your
@@ -711,16 +722,24 @@ so after an edit or a rebuild quit and run it again. The log goes to <world>/deb
 --world DIR  World folder (default: <git toplevel of PATH>/.dev/worlds/<game>; add /.dev/ to
              .gitignore)
 --fresh      Delete the world first (new map)
+--lite       Lighter graphics for integrated GPUs and 4K screens: the 3D world renders at half
+             resolution (undersampling 2, the GUI stays sharp), view range 120, simple leaves.
+             Your own minetest.conf is otherwise used as it is.
+
+It is a debug tool: you play in creative mode without damage, start flying fast (K and J toggle
+it), and get every privilege (settime, teleport, give, noclip, server, ...) from the helper mod
+avanti_play, which is linked into the world's worldmods like the mod itself.
 USAGE
 }
 
 cmd_play() {
-	local path="." game="" world="" fresh=0
+	local path="." game="" world="" fresh=0 lite=0
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 		--game) game="$2"; shift 2 ;;
 		--world) world="$2"; shift 2 ;;
 		--fresh) fresh=1; shift ;;
+		--lite) lite=1; shift ;;
 		-h | --help) play_usage; return 0 ;;
 		-*) die "unknown option $1" ;;
 		*) path="$1"; shift ;;
@@ -740,6 +759,8 @@ cmd_play() {
 	fi
 	[[ $fresh -eq 1 ]] && rm -rf "$world"
 	dev_world "$path" "$game" "$world"
+	# Admin rights for the player, linked like the mod itself (dev_world renews the links each run).
+	ln -sfn "$AVANTI_LIB/avanti_play" "$world/worldmods/avanti_play"
 	# --go skips the main menu, which is what copies creative_mode and enable_damage from world.mt
 	# into the settings. So: the player's own config (keys, graphics) plus those two, per launch.
 	local conf="$world/client.conf" user_conf="" candidate
@@ -751,13 +772,30 @@ cmd_play() {
 			break
 		fi
 	done
+	local override='creative_mode|enable_damage|free_move|fast_move|avanti_play_admin|avanti_play_privs'
+	[[ $lite -eq 1 ]] && override="$override|undersampling|viewing_range|leaves_style|enable_dynamic_shadows"
 	{
-		[[ -n "$user_conf" ]] && grep -vE '^[[:space:]]*(creative_mode|enable_damage)[[:space:]]*=' "$user_conf"
+		[[ -n "$user_conf" ]] && grep -vE "^[[:space:]]*($override)[[:space:]]*=" "$user_conf"
 		echo "creative_mode = true"
 		echo "enable_damage = false"
+		echo "free_move = true"
+		echo "fast_move = true"
+		echo "avanti_play_admin = true"
+		if [[ $lite -eq 1 ]]; then
+			echo "undersampling = 2"
+			echo "viewing_range = 120"
+			echo "leaves_style = simple"
+			echo "enable_dynamic_shadows = false"
+		fi
 	} >"$conf"
 	info "playing $path in $game; world and debug.txt: $world"
 	info "no hot reload: after a change, quit Luanti and run this again"
+	if [[ $lite -eq 0 && -n "$user_conf" ]]; then
+		local width
+		width="$(awk -F'=' '/^[[:space:]]*screen_w[[:space:]]*=/ { gsub(/[[:space:]]/, "", $2); print $2 }' "$user_conf")"
+		[[ "${width:-0}" =~ ^[0-9]+$ && "${width:-0}" -ge 2560 ]] &&
+			info "tip: your screen is ${width} px wide; --lite renders the 3D world at half resolution for a smoother picture"
+	fi
 	LUANTI_GAME_PATH="$(dirname "$gdir")" MINETEST_GAME_PATH="$(dirname "$gdir")" \
 		exec "$bin" --go --world "$world" --gameid "$id" --config "$conf" --logfile "$world/debug.txt"
 }
@@ -1025,6 +1063,167 @@ cmd_cdb() {
 }
 
 # ---------------------------------------------------------------- screenshot
+
+survey_usage() {
+	cat <<'USAGE'
+Usage: avanti survey [PATH] [--game ID] [--seed SEED] [--chunks N] [--spacing METRES]
+                     [--set KEY=VALUE]... [--runner native|docker] [--engine VERSION]
+                     [--timeout SECONDS] [--keep] [--json]
+
+Generates part of a map headlessly with PATH loaded and reports what map generation placed:
+the surface biomes and, per structure, its count, density per km2, distance to the nearest copy
+and biomes. Structures are found generically (core.place_schematic calls and schematic
+decorations at least 10 wide and 4 high) and through an optional bridge mod in
+PATH/tools/survey that reports its own features and balance findings with the avanti_survey API
+(see lib/avanti_survey/init.lua). Structures placed in the mapgen environment are not seen.
+
+The map grows in square rings of 3x3-mapchunk tiles (two chunk layers around sea level) from
+the origin until --chunks mapchunks (default 1800, about 5.8 km2) are generated. --spacing M
+puts the tiles M metres apart to sample more biomes; nearest-copy distances then mean less.
+The seed is fixed (default "avanti"), so surveys are reproducible and comparable.
+
+--set KEY=VALUE  extra server settings, e.g. --set sagas_survey=true for a mod's own switches
+--keep           keep the world in $AVANTI_HOME/worlds/survey-<name>-<game>-<seed> and print the
+                 avanti play command that opens it, to visit what was placed
+--json           print the full report (always written to <world>/avanti_survey.json)
+--timeout S      default: the larger of 600 and one second per mapchunk
+The game defaults to the first of supported_games, else minetest.
+USAGE
+}
+
+# print_survey <report.json>: human-readable tables.
+print_survey() {
+	local f="$1" rows
+	jq -r '"\(.game) seed \(.seed), mapgen \(.mg_name): \(.chunks) mapchunks in \(.tiles) tiles, " +
+		"\(.surface_km2 * 100 | round / 100) km2 of surface, \(.seconds | round) s"' "$f"
+	printf '\n%s%-30s %7s %6s%s\n' "$C_BOLD" BIOME KM2 SHARE "$C_OFF"
+	jq -r '.biomes[:12][] | [.name, (.km2 * 100 | round / 100), ((.share * 100 | round | tostring) + "%")] | @tsv' "$f" |
+		while IFS=$'\t' read -r n k sh; do printf '%-30s %7s %6s\n' "$n" "$k" "$sh"; done
+	rows="$(jq '.features | length' "$f")"
+	printf '\n%s%-10s %-36s %5s %7s %8s %8s  %s%s\n' "$C_BOLD" KIND FEATURE COUNT PER_KM2 NN_AVG NN_MIN BIOMES "$C_OFF"
+	jq -r '.features[:40][] | [.kind, .id, .count, (.per_km2 * 100 | round / 100),
+		(if .nn_mean then (.nn_mean | round) else "-" end), (if .nn_min then (.nn_min | round) else "-" end),
+		(.biomes | to_entries | sort_by(-.value) | .[:3] | map("\(.key) \(.value)") | join(", "))] | @tsv' "$f" |
+		while IFS=$'\t' read -r k id n d avg min b; do
+			printf '%-10s %-36s %5s %7s %8s %8s  %s\n' "$k" "$id" "$n" "$d" "$avg" "$min" "$b"
+		done
+	[[ "$rows" -gt 40 ]] && note "... $((rows - 40)) more in the JSON report"
+	[[ "$rows" -eq 0 ]] && note "no structures seen"
+	jq -r '.mods | to_entries[] | select(.value.report) | "\n\(.key):\n\(.value.report)"' "$f"
+	if [[ "$(jq '.findings | length' "$f")" -gt 0 ]]; then
+		printf '\n%sFINDINGS%s\n' "$C_BOLD" "$C_OFF"
+		jq -r '.findings[] | [.level, .code, .message] | @tsv' "$f" | while IFS=$'\t' read -r lvl code msg; do
+			local color="$C_DIM"
+			[[ "$lvl" == warn ]] && color="$C_YELLOW"
+			[[ "$lvl" == fail ]] && color="$C_RED"
+			printf '%s%-4s%s %s %s\n' "$color" "$lvl" "$C_OFF" "$code" "$msg"
+		done
+	fi
+}
+
+cmd_survey() {
+	local path="." game="" seed="avanti" chunks=1800 spacing=0 runner="native" engine="" limit="" keep=0 json=0
+	local sets=()
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+		--game) game="$2"; shift 2 ;;
+		--seed) seed="$2"; shift 2 ;;
+		--chunks) chunks="$2"; shift 2 ;;
+		--spacing) spacing="$2"; shift 2 ;;
+		--set) [[ "$2" == *=* ]] || die "--set needs KEY=VALUE"; sets+=("$2"); shift 2 ;;
+		--runner) runner="$2"; shift 2 ;;
+		--engine) engine="$2"; shift 2 ;;
+		--timeout) limit="$2"; shift 2 ;;
+		--keep) keep=1; shift ;;
+		--json) json=1; shift ;;
+		-h | --help) survey_usage; return 0 ;;
+		-*) die "unknown option $1" ;;
+		*) path="$1"; shift ;;
+		esac
+	done
+	[[ "$chunks" =~ ^[0-9]+$ && "$spacing" =~ ^[0-9]+$ ]] || die "--chunks and --spacing take whole numbers"
+	path="$(play_path "$path")" || exit 1
+	have ldg || die "ldg is required: uv tool install git+https://github.com/culmat/luanti-depgraph"
+	have jq || die "jq is required"
+	[[ -n "$game" ]] || game="$(declared_games "$path" | head -1)"
+	game="${game:-minetest}"
+	[[ -n "$(game_dir "$game")" ]] || die "game $game not synced: avanti games sync $game"
+	TARGET_MODS="$(ldg deps "$path" --json | jq -r '.provides | join(" ")')"
+	[[ -n "$TARGET_MODS" ]] || die "no mods found in $path"
+	PKG_FOLDER="$(basename "$path")"
+	if [[ -f "$path/init.lua" && "$TARGET_MODS" != *" "* ]]; then PKG_FOLDER="$TARGET_MODS"; fi
+	if [[ "$runner" == native ]]; then
+		engine="$(luanti_version "$(luanti_bin)")" || die "no native Luanti binary (or --runner docker)"
+	else
+		engine="${engine:-$AVANTI_ENGINE_VERSION}"
+	fi
+	[[ -n "$limit" ]] || limit=$((chunks > 600 ? chunks : 600))
+	local id run name bridge="" install_json code=0
+	id="$(game_id "$game")"
+	name="$(basename "$(git -C "$path" rev-parse --show-toplevel 2>/dev/null || echo "$path")")"
+	if [[ $keep -eq 1 ]]; then
+		run="$AVANTI_HOME/worlds/survey-$name-$id-$seed"
+		rm -rf "$run"
+	else
+		run="$(mktemp -d "${TMPDIR:-/tmp}/avanti-survey.XXXXXX")"
+	fi
+	mkdir -p "$run/mods" "$run/world" "$run/user"
+	rsync -a --exclude .git --exclude .github --exclude tools --exclude screenshots "$path/" "$run/mods/$PKG_FOLDER/"
+	install_json="$(ldg install "$path" --game "$game" --dest "$run/mods" --json)" ||
+		die "dependencies can't be met in $game (ldg resolve $path --game $game)"
+	cp -R "$AVANTI_LIB/avanti_survey" "$run/mods/"
+	if [[ -f "$path/tools/survey/mod.conf" ]]; then
+		bridge="$(awk -F'=' '/^[[:space:]]*name[[:space:]]*=/ { gsub(/[[:space:]]/, "", $2); print $2 }' "$path/tools/survey/mod.conf")"
+		cp -R "$path/tools/survey" "$run/mods/$bridge"
+	fi
+	{
+		echo "gameid = $id"
+		echo "backend = sqlite3"
+		echo "player_backend = sqlite3"
+		echo "auth_backend = sqlite3"
+		echo "mod_storage_backend = sqlite3"
+		echo "load_mod_avanti_survey = true"
+		[[ -n "$bridge" ]] && echo "load_mod_$bridge = true"
+		jq -r '.enable[] | "load_mod_\(.) = true"' <<<"$install_json"
+	} >"$run/world/world.mt"
+	{
+		echo "server_announce = false"
+		echo "ipv6_server = false"
+		echo "bind_address = 127.0.0.1"
+		echo "debug_log_level = action"
+		echo "random_mod_load_order = false"
+		echo "fixed_map_seed = $seed"
+		echo "avanti_survey = true"
+		echo "avanti_survey_chunks = $chunks"
+		echo "avanti_survey_spacing = $spacing"
+		echo "avanti_survey_timeout = $((limit > 60 ? limit - 30 : limit))"
+		local kv
+		for kv in ${sets[@]+"${sets[@]}"}; do echo "${kv%%=*} = ${kv#*=}"; done
+	} >"$run/survey.conf"
+	note "surveying $(basename "$path") in $game on $engine ($runner): $chunks mapchunks, seed $seed${bridge:+, bridge $bridge}"
+	run_server "$run" "$game" "$engine" "$runner" "$limit" survey.conf || code=$?
+	local report="$run/world/avanti_survey.json"
+	if [[ ! -f "$report" ]]; then
+		grep -E 'ERROR\[|Runtime error' "$run/debug.txt" 2>/dev/null | sed -E 's/^[0-9: -]+//' | awk '!seen[$0]++' | head -10 >&2 || true
+		die "the survey did not finish (server exit code $code); log: $run/debug.txt"
+	fi
+	if [[ $json -eq 1 ]]; then
+		cat "$report"
+	else
+		print_survey "$report"
+	fi
+	local errors
+	errors="$(grep -cE 'ERROR\[|Runtime error' "$run/debug.txt" 2>/dev/null || true)"
+	[[ "${errors:-0}" -gt 0 ]] && warn "$errors error line(s) in $run/debug.txt"
+	if [[ $keep -eq 1 ]]; then
+		info ""
+		info "world kept: $run/world (report: $report)"
+		info "visit it:   avanti play $path --game $game --world $run/world --lite"
+		info "            (--lite: smoother picture on integrated graphics; mods may offer commands to visit what was placed)"
+	else
+		rm -rf "$run"
+	fi
+}
 
 screenshot_usage() {
 	cat <<'USAGE'
@@ -1318,6 +1517,7 @@ main() {
 	test) cmd_test "$@" ;;
 	play) cmd_play "$@" ;;
 	serve) cmd_serve "$@" ;;
+	survey) cmd_survey "$@" ;;
 	screenshot) cmd_screenshot "$@" ;;
 	index) cmd_index "$@" ;;
 	cdb) cmd_cdb "$@" ;;

@@ -1,6 +1,6 @@
 ---
 name: luanti-testing
-description: Test Luanti (Minetest) mods - luacheck config, ldg lint, writing mtt integration tests, running `avanti test` headlessly across games and engine versions (native or Docker), reading results and server logs, and play-testing with `avanti serve`.
+description: Test Luanti (Minetest) mods - luacheck config, ldg lint, writing mtt integration tests, running `avanti test` headlessly across games and engine versions (native or Docker), reading results and server logs, surveying what a mapgen mod places with `avanti survey`, and play-testing with `avanti play`/`avanti serve`.
 when_to_use: Before declaring mod work done, when adding tests, when `avanti test` or CI fails, or when asked to verify a mod works in a game.
 ---
 
@@ -97,6 +97,52 @@ The template's `.luacheckrc` uses `std = "luajit"` and lists the engine globals 
 
 `avanti play --game mineclonia` opens the Luanti client straight into a creative world (`<repo>/.dev/worlds/<game>`, gitignore `/.dev/`) to check what tests can't: visuals, sounds, formspec layout. The mod is symlinked into the world's `worldmods/`, so the world always runs the working copy; never copy mods into the Luanti mods folder for testing.
 
+It is a debug tool: the player starts flying fast and has every privilege (`settime`, `teleport`, `give`, `noclip`, `server`, ...). The helper mod `avanti_play`, linked into the world's worldmods, grants them on join, because singleplayer lacks them in most games, even in creative mode.
+
+`--lite` renders the 3D world at half resolution (`undersampling = 2`), with view range 120 and simple leaves; the rest of the user's `minetest.conf` stays. Suggest it on integrated graphics or 4K screens, where camera movement otherwise stutters.
+
 Luanti has no hot reload: Lua state is built once at startup, and schematics loaded from a file stay cached until the server restarts (`core.place_schematic` in `lua_api.md`). After a change, quit and rerun `avanti play`; `--fresh` starts a new map.
 
 `avanti serve --game mineclonia` runs the same world setup as a server on 127.0.0.1:30000 (world in `~/.avanti/worlds/`), for joining from another client or with several players.
+
+## Mapgen mods: survey, then visit
+
+Mods that place structures during map generation need a different question answered: across a real
+map, how many appear, how close do copies sit, and in which biomes? `avanti survey` answers it headlessly.
+
+```sh
+avanti survey --game minetest                       # ~1800 mapchunks (~5.8 km2), seed "avanti"
+avanti survey --game mineclonia --chunks 600 --keep  # smaller, and keep the world to visit
+avanti survey --spacing 2000                         # tiles 2 km apart: more biomes, no spacing data
+avanti survey --set mymod_debug=true --json          # pass the mod's own settings; full JSON report
+```
+
+- **How it works.** The helper mod `avanti_survey` grows the map in square rings of 3x3-mapchunk tiles
+  (two chunk layers around sea level, so mountain tops above ~127 are not covered). A mapchunk is
+  80x80x80 nodes, so 1 km2 is about 156 chunks per layer.
+- **What it reports.**
+  - Surface biome shares.
+  - Per structure: count, per km2, average and minimum distance to the nearest copy, and top biomes.
+  - Structures are found generically: `core.place_schematic`/`place_schematic_on_vmanip` calls by schematic file, and named schematic decorations (through gennotify), counting only schematics at least 10 nodes wide and 4 high. No mod changes are needed.
+  - Not seen: structures placed in the mapgen environment (`core.register_mapgen_script`).
+- **Bridge mods.** A mod can ship a development-only bridge in `PATH/tools/survey/` (`optional_depends = avanti_survey`, inert without it, kept out of releases with `export-ignore`). It reports its own features and findings:
+  - `avanti_survey.report(kind, id, pos, extra)`
+  - `avanti_survey.register_on_finish(fn)`: `fn(ctx)` gets `surface_km2` and the features, and returns a table stored under `mods.<modname>`. A string field `report` is printed.
+  - `avanti_survey.finding(level, code, message)`
+  - `avanti_survey.ignore(pattern)`: its own schematics aren't counted twice.
+
+  luanti-sagas' `mods/tools/survey` is the reference bridge.
+- **Speed** (Intel Mac, native, with the sagas bridge and its site probe, 2026-10-17):
+
+  | Game | Mapchunks per second |
+  |---|---|
+  | Minetest Game | about 8 |
+  | Mineclonia | about 2.5 |
+
+  Use `--chunks 600` or fewer in Mineclonia for quick runs. The default timeout is one second per mapchunk, at least 600 s.
+- **Visiting.** With `--keep` the world stays in `~/.avanti/worlds/survey-<name>-<game>-<seed>/world`, and `avanti play PATH --game G --world <that> --lite` opens it. A new `--keep` run deletes the previous world of the same name, game and seed. The mod's own teleport or tour commands then visit the placements. This opens the Luanti window: ask the user first.
+
+Balance rules of thumb for structure mods:
+- Big or detailed builds should rarely repeat (aim for 2 km or more between copies).
+- "Network" builds (watchtowers, lighthouses) may repeat at regular distances.
+- Light sources stay sparse (about 0.5 lit structures per km2 or fewer), so nights in survival stay dark.

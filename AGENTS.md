@@ -10,7 +10,7 @@ This repo is the **factory**: developer tooling for building Luanti mods. It isn
 |---|---|
 | `plugins/avanti/` | The Claude Code plugin. Everything the plugin needs at runtime must live inside this directory: installed plugins can't reach files outside it. |
 | `plugins/avanti/bin/avanti` | The `avanti` CLI (Bash). It sources `../lib/common.sh`. `bin/` is on the Bash tool's PATH when the plugin is enabled. |
-| `plugins/avanti/lib/` | `games.tsv` (the reference games), `avanti_smoke/` (the headless smoke-test mod) |
+| `plugins/avanti/lib/` | `games.tsv` (the reference games), helper mods copied into throwaway worlds: `avanti_smoke/` (headless smoke test), `avanti_survey/` (mapgen survey), `avanti_play/` (all privileges for the `avanti play` player), `avanti_showcase/` and `avanti_camera/` (screenshots) |
 | `plugins/avanti/templates/mod/` | The mod template. `{{placeholders}}` are filled by `avanti new`. |
 | `plugins/avanti/skills/`, `agents/`, `hooks/`, `.mcp.json` | Plugin components |
 | `.github/workflows/mod-ci.yml` | Reusable CI that mod repos call (`@v1`). Keep its inputs backwards compatible. |
@@ -39,6 +39,7 @@ avanti new avanti_scratch --dir "$TMPDIR" --owner culmat && avanti test "$TMPDIR
 
 - For a negative test, add an undeclared `default.node_sound_stone_defaults()` call. Expect `ldg lint` LDG001, plus FAIL in mineclonia and mineclone2 and PASS in minetest.
 - For the Docker path, start Docker (`colima start` on this machine) and add `--runner docker --engine 5.17.0`.
+- For `avanti survey`, use a mapgen mod with a bridge, e.g. `avanti survey ~/git/luanti-sagas/mods --game minetest --chunks 450 --set sagas_survey=true` (about a minute). Expect a biome table, a feature table and SV findings.
 
 ## Rules
 
