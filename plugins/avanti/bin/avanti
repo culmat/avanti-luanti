@@ -671,6 +671,7 @@ cmd_test() {
 # (a modpack or a single mod) resolves to that folder; anything else that isn't a mod is an error.
 play_path() {
 	local path
+	[[ -d "$1" ]] || die "no folder $1 in $(pwd): run avanti in the mod's repository, or pass the full path (e.g. ~/git/<repo>/mods)"
 	path="$(cd "$1" && pwd)"
 	if [[ ! -f "$path/init.lua" && ! -f "$path/modpack.conf" && ! -f "$path/mod.conf" ]]; then
 		if [[ -f "$path/mods/modpack.conf" || -f "$path/mods/init.lua" ]]; then
@@ -1083,8 +1084,9 @@ puts the tiles M metres apart to sample more biomes; nearest-copy distances then
 The seed is fixed (default "avanti"), so surveys are reproducible and comparable.
 
 --set KEY=VALUE  extra server settings, e.g. --set sagas_survey=true for a mod's own switches
---keep           keep the world in $AVANTI_HOME/worlds/survey-<name>-<game>-<seed> and print the
-                 avanti play command that opens it, to visit what was placed
+--keep           keep the world in $AVANTI_HOME/worlds/survey-<name>-<game>-<seed>[-<settings hash>]
+                 (replacing an earlier one with the same settings) and print the avanti play command
+                 that opens it, to visit what was placed
 --json           print the full report (always written to <world>/avanti_survey.json)
 --timeout S      default: the larger of 600 and one second per mapchunk
 The game defaults to the first of supported_games, else minetest.
@@ -1097,22 +1099,22 @@ print_survey() {
 	jq -r '"\(.game) seed \(.seed), mapgen \(.mg_name): \(.chunks) mapchunks in \(.tiles) tiles, " +
 		"\(.surface_km2 * 100 | round / 100) km2 of surface, \(.seconds | round) s"' "$f"
 	printf '\n%s%-30s %7s %6s%s\n' "$C_BOLD" BIOME KM2 SHARE "$C_OFF"
-	jq -r '.biomes[:12][] | [.name, (.km2 * 100 | round / 100), ((.share * 100 | round | tostring) + "%")] | @tsv' "$f" |
+	jq -r '(.biomes // [])[:12][] | [.name, (.km2 * 100 | round / 100), ((.share * 100 | round | tostring) + "%")] | @tsv' "$f" |
 		while IFS=$'\t' read -r n k sh; do printf '%-30s %7s %6s\n' "$n" "$k" "$sh"; done
-	rows="$(jq '.features | length' "$f")"
+	rows="$(jq '(.features // []) | length' "$f")"
 	printf '\n%s%-10s %-36s %5s %7s %8s %8s  %s%s\n' "$C_BOLD" KIND FEATURE COUNT PER_KM2 NN_AVG NN_MIN BIOMES "$C_OFF"
-	jq -r '.features[:40][] | [.kind, .id, .count, (.per_km2 * 100 | round / 100),
+	jq -r '(.features // [])[:40][] | [.kind, .id, .count, (.per_km2 * 100 | round / 100),
 		(if .nn_mean then (.nn_mean | round) else "-" end), (if .nn_min then (.nn_min | round) else "-" end),
-		(.biomes | to_entries | sort_by(-.value) | .[:3] | map("\(.key) \(.value)") | join(", "))] | @tsv' "$f" |
+		((.biomes // {}) | to_entries | sort_by(-.value) | .[:3] | map("\(.key) \(.value)") | join(", "))] | @tsv' "$f" |
 		while IFS=$'\t' read -r k id n d avg min b; do
 			printf '%-10s %-36s %5s %7s %8s %8s  %s\n' "$k" "$id" "$n" "$d" "$avg" "$min" "$b"
 		done
 	[[ "$rows" -gt 40 ]] && note "... $((rows - 40)) more in the JSON report"
 	[[ "$rows" -eq 0 ]] && note "no structures seen"
-	jq -r '.mods | to_entries[] | select(.value.report) | "\n\(.key):\n\(.value.report)"' "$f"
-	if [[ "$(jq '.findings | length' "$f")" -gt 0 ]]; then
+	jq -r '(.mods // {}) | to_entries[] | select(.value.report) | "\n\(.key):\n\(.value.report)"' "$f"
+	if [[ "$(jq '(.findings // []) | length' "$f")" -gt 0 ]]; then
 		printf '\n%sFINDINGS%s\n' "$C_BOLD" "$C_OFF"
-		jq -r '.findings[] | [.level, .code, .message] | @tsv' "$f" | while IFS=$'\t' read -r lvl code msg; do
+		jq -r '(.findings // [])[] | [.level, .code, .message] | @tsv' "$f" | while IFS=$'\t' read -r lvl code msg; do
 			local color="$C_DIM"
 			[[ "$lvl" == warn ]] && color="$C_YELLOW"
 			[[ "$lvl" == fail ]] && color="$C_RED"
@@ -1162,7 +1164,10 @@ cmd_survey() {
 	id="$(game_id "$game")"
 	name="$(basename "$(git -C "$path" rev-parse --show-toplevel 2>/dev/null || echo "$path")")"
 	if [[ $keep -eq 1 ]]; then
-		run="$AVANTI_HOME/worlds/survey-$name-$id-$seed"
+		# Surveys with other settings (e.g. --set sagas_only=...) keep their own world.
+		local variant=""
+		[[ ${#sets[@]} -gt 0 ]] && variant="-$(printf '%s\n' "${sets[@]}" | sort | cksum | cut -d' ' -f1)"
+		run="$AVANTI_HOME/worlds/survey-$name-$id-$seed$variant"
 		rm -rf "$run"
 	else
 		run="$(mktemp -d "${TMPDIR:-/tmp}/avanti-survey.XXXXXX")"
