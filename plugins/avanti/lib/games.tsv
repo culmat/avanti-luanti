@@ -1,10 +1,12 @@
 # Reference games for testing. Columns: game id (engine), folder, source, options (optional).
+# Source: one or more git URLs separated by spaces; later ones are fallbacks (git.minetest.land
+# refuses GitHub's runners since 2026-10, so VoxeLibre falls back to its official GitHub mirror).
 # The folder name determines the game id the engine sees (a trailing _game is stripped).
 # "engine:<path>" means a directory inside the engine checkout.
 # Options: fixed-order = the game only starts with the engine's fixed mod load order, so
 # avanti test never randomizes it there (Asuna loads abdecor without depending on it).
 minetest	minetest_game	https://github.com/luanti-org/minetest_game.git
 mineclonia	mineclonia	https://codeberg.org/mineclonia/mineclonia.git
-mineclone2	mineclone2	https://git.minetest.land/VoxeLibre/VoxeLibre.git
+mineclone2	mineclone2	https://git.minetest.land/VoxeLibre/VoxeLibre.git https://github.com/VoxeLibre/VoxeLibre.git
 asuna	asuna	https://github.com/asuna-mt/asuna.git	fixed-order
 devtest	devtest	engine:games/devtest

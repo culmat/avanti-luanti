@@ -160,17 +160,24 @@ cmd_doctor() {
 
 # ---------------------------------------------------------------- games & corpus
 
-shallow_sync() { # shallow_sync <url> <dir>
-	local url="$1" dir="$2"
-	if [[ -d "$dir/.git" ]]; then
-		note "updating $dir"
-		git -C "$dir" fetch --quiet --depth 1 origin HEAD
-		git -C "$dir" reset --quiet --hard FETCH_HEAD
-	else
-		note "cloning $url"
-		mkdir -p "$(dirname "$dir")"
-		git clone --quiet --depth 1 "$url" "$dir"
-	fi
+shallow_sync() { # shallow_sync "<url> [<fallback url>...]" <dir>: the first source that answers wins
+	local dir="$2" url last
+	local -a urls
+	read -r -a urls <<<"$1"
+	last="${urls[${#urls[@]} - 1]}"
+	for url in "${urls[@]}"; do
+		if [[ -d "$dir/.git" ]]; then
+			note "updating $dir from $url"
+			git -C "$dir" fetch --quiet --depth 1 "$url" HEAD && git -C "$dir" reset --quiet --hard FETCH_HEAD && break
+		else
+			note "cloning $url"
+			mkdir -p "$(dirname "$dir")"
+			git clone --quiet --depth 1 "$url" "$dir" && break
+			rm -rf "$dir"
+		fi
+		[[ "$url" != "$last" ]] || die "could not fetch $dir from: $1"
+		warn "$url did not answer; trying the next source"
+	done
 	# Games like Asuna keep every mod in a submodule.
 	if [[ -f "$dir/.gitmodules" ]]; then
 		git -C "$dir" submodule --quiet sync --recursive
