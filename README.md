@@ -108,7 +108,7 @@ avanti games sync [ID...]          minetest, mineclonia, mineclone2, asuna, devt
 avanti corpus sync [--top N]       engine docs + games + vendored refs + top-N package sources, then index
 avanti new NAME [...]              scaffold from plugins/avanti/templates/mod
 avanti test [PATH] [...]           lint + headless run per game × engine (native or Docker)
-avanti play [PATH] [--game ID]     Luanti client in a creative world that loads PATH live (symlink, no copy), flying, as admin; --lite for integrated GPUs
+avanti play [PATH] [--game ID]     Luanti client in a creative world that loads PATH live (symlink, no copy), flying, as admin; --lite for integrated GPUs, --set KEY=VALUE, --print-command (JSON, for programs)
 avanti serve [PATH] --game ID      local server for play-testing with the Luanti client
 avanti survey [PATH] [--game ID]   headless map sample: biomes, structure density, spacing, balance findings
 avanti screenshot [PATH]           in-game screenshots and videos from a shot list, one engine start per game (macOS)

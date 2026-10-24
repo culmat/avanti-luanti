@@ -99,7 +99,7 @@ The template's `.luacheckrc` uses `std = "luajit"` and lists the engine globals 
 
 It is a debug tool: the player starts flying fast and has every privilege (`settime`, `teleport`, `give`, `noclip`, `server`, ...). The helper mod `avanti_play`, linked into the world's worldmods, grants them on join, because singleplayer lacks them in most games, even in creative mode.
 
-`--lite` renders the 3D world at half resolution (`undersampling = 2`), with view range 120 and simple leaves; the rest of the user's `minetest.conf` stays. Suggest it on integrated graphics or 4K screens, where camera movement otherwise stutters.
+`--lite` renders the 3D world at half resolution (`undersampling = 2`), with view range 120 and simple leaves; the rest of the user's `minetest.conf` stays. Suggest it on integrated graphics or 4K screens, where camera movement otherwise stutters. `--set KEY=VALUE` adds a setting for this launch (e.g. a mod's start command). `--print-command` prepares the world and prints the launch as JSON instead of starting Luanti, for programs that start it themselves. On Windows (Git Bash) the mod is copied into `worldmods/` instead of linked, so run it again after every change.
 
 Luanti has no hot reload: Lua state is built once at startup, and schematics loaded from a file stay cached until the server restarts (`core.place_schematic` in `lua_api.md`). After a change, quit and rerun `avanti play`; `--fresh` starts a new map.
 

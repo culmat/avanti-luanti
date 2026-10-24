@@ -30,6 +30,39 @@ die() {
 }
 have() { command -v "$1" >/dev/null 2>&1; }
 
+# Git Bash (MSYS2) or Cygwin on Windows: no symlinks without developer mode, and the engine wants
+# Windows paths.
+is_windows() {
+	case "${OSTYPE:-}$(uname -s 2>/dev/null)" in
+	*msys* | *cygwin* | *MINGW* | *MSYS* | *CYGWIN*) return 0 ;;
+	*) return 1 ;;
+	esac
+}
+
+# A path as the engine binary expects it (C:\... on Windows, unchanged elsewhere).
+native_path() {
+	if is_windows && have cygpath; then cygpath -w "$1"; else printf '%s\n' "$1"; fi
+}
+
+# link_in <target> <link>: symlink, or on Windows a copy marked .avanti-copy (Luanti's
+# RecursiveDelete follows links on Windows, and symlinks need developer mode there).
+link_in() {
+	if is_windows; then
+		rm -rf "$2"
+		cp -R "$1" "$2"
+		: >"$2/.avanti-copy"
+	else
+		ln -sfn "$1" "$2"
+	fi
+}
+
+# json_str <text>: a JSON string literal (paths and plain text; no control characters expected).
+json_str() {
+	local s="${1//\\/\\\\}"
+	s="${s//\"/\\\"}"
+	printf '"%s"' "$s"
+}
+
 # Lines of games.tsv without comments: "id folder source [options]".
 games_table() { grep -v '^#' "$AVANTI_LIB/games.tsv" | grep -v '^$'; }
 
@@ -83,7 +116,9 @@ luanti_bin() {
 # Engine binary with a window (no luantiserver): LUANTI_BIN, luanti, the macOS app, legacy names.
 luanti_client_bin() {
 	local candidate
-	for candidate in "${LUANTI_BIN:-}" luanti /Applications/Luanti.app/Contents/MacOS/luanti minetest; do
+	for candidate in "${LUANTI_BIN:-}" luanti /Applications/Luanti.app/Contents/MacOS/luanti \
+		"${PROGRAMFILES:+$PROGRAMFILES/Luanti/bin/luanti.exe}" \
+		"${LOCALAPPDATA:+$LOCALAPPDATA/Programs/Luanti/bin/luanti.exe}" minetest; do
 		[[ -n "$candidate" ]] || continue
 		if [[ -x "$candidate" ]]; then
 			echo "$candidate"

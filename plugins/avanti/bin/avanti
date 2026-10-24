@@ -14,7 +14,7 @@ avanti: build and test Luanti mods (part of avanti-luanti)
 Usage:
   avanti doctor [--quiet]            Check tools, games, database and search index
   avanti games sync [ID...]          Clone or update reference games (default: all)
-  avanti games list                  Show reference games and whether they are synced
+  avanti games list [--json]         Show reference games and whether they are synced
   avanti corpus sync [--top N]       Engine docs + games + vendored references + top-N package
                                      sources into \$AVANTI_HOME/corpus, then index them for search
   avanti new NAME [options]          Scaffold a mod from the template (see avanti new --help)
@@ -204,11 +204,20 @@ cmd_games() {
 	shift || true
 	case "$sub" in
 	list)
-		local id folder source dir
+		local id folder source dir sep=""
+		[[ "${1:-}" == "--json" ]] && printf '['
 		while IFS=$'\t' read -r id folder source _; do
 			dir="$(game_dir "$id")"
-			printf '%-12s %-14s %s\n' "$id" "${dir:+synced}" "${dir:-$source}"
+			if [[ "${1:-}" == "--json" ]]; then
+				printf '%s{"id": %s, "folder": %s, "synced": %s, "dir": %s, "source": %s}' "$sep" \
+					"$(json_str "$id")" "$(json_str "$folder")" "$([[ -n "$dir" ]] && echo true || echo false)" \
+					"$(json_str "$dir")" "$(json_str "$source")"
+				sep=", "
+			else
+				printf '%-12s %-14s %s\n' "$id" "${dir:+synced}" "${dir:-$source}"
+			fi
 		done < <(games_table)
+		[[ "${1:-}" == "--json" ]] && printf ']\n'
 		;;
 	sync)
 		local wanted=("$@") id folder source
@@ -692,7 +701,8 @@ play_path() {
 
 # dev_world <path> <game> <world>: a world that loads the working copy at <path> live. The package
 # is symlinked into <world>/worldmods (always loaded, no load_mod_ lines), so edits need only a
-# restart, never a copy. Dependencies the game lacks are installed next to it by ldg.
+# restart, never a copy. Dependencies the game lacks are installed next to it by ldg. On Windows
+# the package is copied instead (link_in), so each run copies it again.
 dev_world() {
 	local path="$1" game="$2" world="$3" id folder
 	id="$(game_id "$game")"
@@ -704,9 +714,14 @@ dev_world() {
 	fi
 	folder="${folder:-$(basename "$path")}"
 	mkdir -p "$world/worldmods"
-	# Links from earlier runs (another path or folder name) would load stale or duplicate mods.
+	# Links (or Windows copies) from earlier runs, of another path or folder name, would load stale
+	# or duplicate mods.
 	find "$world/worldmods" -maxdepth 1 -type l -exec rm -f {} +
-	ln -sfn "$path" "$world/worldmods/$folder"
+	local copy
+	for copy in "$world"/worldmods/*/.avanti-copy; do
+		[[ -f "$copy" ]] && rm -rf "$(dirname "$copy")"
+	done
+	link_in "$path" "$world/worldmods/$folder"
 	ldg install "$path" --game "$game" --dest "$world/worldmods" --json >/dev/null ||
 		die "dependencies can't be met in $game (ldg resolve $path --game $game)"
 	if [[ ! -f "$world/world.mt" ]]; then
@@ -719,7 +734,8 @@ dev_world() {
 
 play_usage() {
 	cat <<'USAGE'
-Usage: avanti play [PATH] [--game ID] [--world DIR] [--fresh] [--lite]
+Usage: avanti play [PATH] [--game ID] [--world DIR] [--fresh] [--lite] [--set KEY=VALUE]...
+                   [--print-command]
 
 Opens the Luanti client straight into a creative world (no damage) that loads the mod or
 modpack at PATH (default .; a repository root with its code in mods/ works too) from your
@@ -733,6 +749,9 @@ so after an edit or a rebuild quit and run it again. The log goes to <world>/deb
 --lite       Lighter graphics for integrated GPUs and 4K screens: the 3D world renders at half
              resolution (undersampling 2, the GUI stays sharp), view range 120, simple leaves.
              Your own minetest.conf is otherwise used as it is.
+--set KEY=VALUE  A setting for this launch, e.g. --set sagas_start="find mammoth_skeleton"
+--print-command  Prepare the world, then print the launch as JSON (bin, args, env, world, log)
+             instead of starting Luanti, for programs that start it themselves (Saga Forge)
 
 It is a debug tool: you play in creative mode without damage, start flying fast (K and J toggle
 it), and get every privilege (settime, teleport, give, noclip, server, ...) from the helper mod
@@ -741,13 +760,16 @@ USAGE
 }
 
 cmd_play() {
-	local path="." game="" world="" fresh=0 lite=0
+	local path="." game="" world="" fresh=0 lite=0 print=0
+	local -a sets=()
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 		--game) game="$2"; shift 2 ;;
 		--world) world="$2"; shift 2 ;;
 		--fresh) fresh=1; shift ;;
 		--lite) lite=1; shift ;;
+		--set) [[ "${2:-}" == *=* ]] || die "--set needs KEY=VALUE"; sets+=("$2"); shift 2 ;;
+		--print-command) print=1; shift ;;
 		-h | --help) play_usage; return 0 ;;
 		-*) die "unknown option $1" ;;
 		*) path="$1"; shift ;;
@@ -768,20 +790,24 @@ cmd_play() {
 	[[ $fresh -eq 1 ]] && rm -rf "$world"
 	dev_world "$path" "$game" "$world"
 	# Admin rights for the player, linked like the mod itself (dev_world renews the links each run).
-	ln -sfn "$AVANTI_LIB/avanti_play" "$world/worldmods/avanti_play"
+	link_in "$AVANTI_LIB/avanti_play" "$world/worldmods/avanti_play"
 	# --go skips the main menu, which is what copies creative_mode and enable_damage from world.mt
 	# into the settings. So: the player's own config (keys, graphics) plus those two, per launch.
+	# A portable (run-in-place) Luanti keeps minetest.conf next to its bin/ folder.
 	local conf="$world/client.conf" user_conf="" candidate
-	for candidate in "${LUANTI_USER_PATH:-}" "${MINETEST_USER_PATH:-}" \
+	for candidate in "${LUANTI_USER_PATH:-}" "${MINETEST_USER_PATH:-}" "$(dirname "$(dirname "$bin")")" \
 		"$HOME/Library/Application Support/luanti" "$HOME/Library/Application Support/minetest" \
-		"$HOME/.luanti" "$HOME/.minetest"; do
+		"${APPDATA:+$APPDATA/Luanti}" "${APPDATA:+$APPDATA/Minetest}" "$HOME/.luanti" "$HOME/.minetest"; do
 		if [[ -n "$candidate" && -f "$candidate/minetest.conf" ]]; then
 			user_conf="$candidate/minetest.conf"
 			break
 		fi
 	done
-	local override='creative_mode|enable_damage|free_move|fast_move|avanti_play_admin|avanti_play_privs'
+	local override='creative_mode|enable_damage|free_move|fast_move|avanti_play_admin|avanti_play_privs' kv
 	[[ $lite -eq 1 ]] && override="$override|undersampling|viewing_range|leaves_style|enable_dynamic_shadows"
+	for kv in ${sets[@]+"${sets[@]}"}; do
+		override="$override|${kv%%=*}"
+	done
 	{
 		[[ -n "$user_conf" ]] && grep -vE "^[[:space:]]*($override)[[:space:]]*=" "$user_conf"
 		echo "creative_mode = true"
@@ -795,7 +821,22 @@ cmd_play() {
 			echo "leaves_style = simple"
 			echo "enable_dynamic_shadows = false"
 		fi
+		for kv in ${sets[@]+"${sets[@]}"}; do
+			echo "${kv%%=*} = ${kv#*=}"
+		done
 	} >"$conf"
+	local games_path
+	games_path="$(native_path "$(dirname "$gdir")")"
+	if [[ $print -eq 1 ]]; then
+		local nworld
+		nworld="$(native_path "$world")"
+		printf '{"bin": %s, "args": [%s, %s, %s, %s, %s, %s, %s, %s, %s], "env": {"LUANTI_GAME_PATH": %s, "MINETEST_GAME_PATH": %s}, "world": %s, "log": %s, "game": %s}\n' \
+			"$(json_str "$(native_path "$bin")")" '"--go"' '"--world"' "$(json_str "$nworld")" '"--gameid"' \
+			"$(json_str "$id")" '"--config"' "$(json_str "$(native_path "$conf")")" '"--logfile"' \
+			"$(json_str "$(native_path "$world/debug.txt")")" "$(json_str "$games_path")" "$(json_str "$games_path")" \
+			"$(json_str "$nworld")" "$(json_str "$(native_path "$world/debug.txt")")" "$(json_str "$id")"
+		return 0
+	fi
 	info "playing $path in $game; world and debug.txt: $world"
 	info "no hot reload: after a change, quit Luanti and run this again"
 	if [[ $lite -eq 0 && -n "$user_conf" ]]; then
@@ -804,8 +845,9 @@ cmd_play() {
 		[[ "${width:-0}" =~ ^[0-9]+$ && "${width:-0}" -ge 2560 ]] &&
 			info "tip: your screen is ${width} px wide; --lite renders the 3D world at half resolution for a smoother picture"
 	fi
-	LUANTI_GAME_PATH="$(dirname "$gdir")" MINETEST_GAME_PATH="$(dirname "$gdir")" \
-		exec "$bin" --go --world "$world" --gameid "$id" --config "$conf" --logfile "$world/debug.txt"
+	LUANTI_GAME_PATH="$games_path" MINETEST_GAME_PATH="$games_path" \
+		exec "$bin" --go --world "$(native_path "$world")" --gameid "$id" --config "$(native_path "$conf")" \
+		--logfile "$(native_path "$world/debug.txt")"
 }
 
 cmd_serve() {
